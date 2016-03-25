@@ -117,14 +117,6 @@ gulp.task('bs-reload', function () {
     browserSync.reload();
 });
 
-gulp.task('devapp',()=>{
-  try {
-    fs.mkdirSync('./dist/app');
-  } catch (e) {
-  }
-  gulp.src('./src/app/*.js').pipe(gulp.dest('./dist/app'));
-});
-
 gulp.task('default',['js','postcss','browser-sync'],function(){
     watch('./src/js/**/*.js',()=>gulp.start(['js']));
     watch('./src/css/**/*.css',()=>gulp.start(['postcss']));
