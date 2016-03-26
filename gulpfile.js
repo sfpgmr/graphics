@@ -20,7 +20,8 @@ var atImport = require('postcss-import');
 // JSのビルド
 gulp.task('js',function(){
     browserify('./src/js/scripts.js',{debug:true,extensions: ['.js']})
-    .transform(babelify,{"plugins": [
+    .transform(babelify,{//"presets": ["es2015"]
+       "plugins": [
       "transform-es2015-arrow-functions",
       "transform-es2015-block-scoped-functions",
       "transform-es2015-block-scoping",
@@ -39,8 +40,14 @@ gulp.task('js',function(){
       "transform-es2015-sticky-regex",
       "transform-es2015-template-literals",
       "transform-es2015-typeof-symbol",
-      "transform-es2015-unicode-regex"
-      ]})
+       "transform-es2015-unicode-regex",
+    ["transform-regenerator", {
+        asyncGenerators: true, // true by default
+        generators: true, // true by default
+        async: true // true by default
+    }]      
+      ]
+    })
 //    .transform({global:true},uglifyify)
     .bundle()
     .on("error", function (err) { console.log("Error : " + err.message); })
