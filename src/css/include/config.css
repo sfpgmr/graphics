@@ -1,0 +1,13 @@
+:root {
+	--button-bg-color: white;
+	--button-color: blue;
+	--button-hover-color: red;
+	--button-hover-bg-color: white;
+  --button-active-bg-color:blue;
+  --button-active-color:white;
+  --default-font: "Meiryo","HiraKakuProN-W3",sans-serif;
+  --default-font-size: 12px;
+}
+
+@custom-media --smart-phone screen and (max-width:960px);
+@custom-media --desktop screen and (min-width:961px);

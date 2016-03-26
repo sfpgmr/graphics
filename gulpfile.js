@@ -19,7 +19,7 @@ var atImport = require('postcss-import');
 
 // JSのビルド
 gulp.task('js',function(){
-    browserify('./src/js/sfstyle.js',{debug:true,extensions: ['.js']})
+    browserify('./src/js/scripts.js',{debug:true,extensions: ['.js']})
     .transform(babelify,{"plugins": [
       "transform-es2015-arrow-functions",
       "transform-es2015-block-scoped-functions",
@@ -117,8 +117,9 @@ gulp.task('bs-reload', function () {
     browserSync.reload();
 });
 
-gulp.task('default',['js','postcss','browser-sync'],function(){
+gulp.task('default',['js','postcss','browser-sync','html'],function(){
     watch('./src/js/**/*.js',()=>gulp.start(['js']));
+    watch('./src/html/**/*.html',()=>gulp.start(['html']));
     watch('./src/css/**/*.css',()=>gulp.start(['postcss']));
     watch('./dist/**/*.*',()=>gulp.start(['bs-reload']));
 });

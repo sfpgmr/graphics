@@ -1,0 +1,76 @@
+@import "./config.css";
+
+/* common */
+@media screen {
+  .main-nav {
+    background:gray;
+    .nav-items {
+      .item {
+          text-decoration:none;
+          text-align:left;
+          padding:10px;
+          color:white;
+          &:hover {
+            color: black;
+            background: white;
+            cursor: pointer;
+          }
+          
+      }
+    }
+  }
+}
+
+/* for smart phone */
+@media (--smart-phone) {
+  .main-nav {
+    .nav-button {
+      width: 48px;
+      height: 48px;
+      svg {
+        vertical-align: middle;
+      }
+      border:none;
+      background:none;
+      display: inline-block;
+    }
+    position:fixed;
+    width:100%;
+    top: 0;
+    left: 0;
+  }
+
+  .nav-display-default {
+    display:none;
+  }
+
+  .nav-display-toggle {
+    display:flex;
+    flex-direction: column;
+  }      
+
+}
+
+/* for deskctop */
+@media (--desktop) {
+  .main-nav {
+    background:gray;
+  }
+  .nav-button {
+    display:none;
+  }
+  .nav-items {
+    .item {
+      flex-basis: 200px;
+    }
+  }
+  .nav-display-default {
+    display:flex;
+    flex-direction: row;
+  }
+  .nav-display-toggle {
+    display:flex;
+    flex-direction: row;
+  }       
+
+}
