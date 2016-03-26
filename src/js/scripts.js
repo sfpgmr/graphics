@@ -41,6 +41,9 @@ window.addEventListener('load',()=>{
     width = view.offsetWidth;
     height = view.offsetHeight;
     viewCtx = view.getContext("2d");
+    viewCtx.mozImageSmoothingEnabled = false;
+    viewCtx.webkitImageSmoothingEnabled = false;
+    viewCtx.msImageSmoothingEnabled = false;    
     viewCtx.imageSmoothingEnabled = false;
     viewCtx.fillStyle = "rgb(0, 0, 0)";
     viewCtx.fillRect(0,0,width,height);
