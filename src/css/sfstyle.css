@@ -34,6 +34,7 @@ canvas#buffer {
 
 .control {
   box-sizing:border-box;
+  text-align:center;
   margin:2px;
   width:60px;
 }
