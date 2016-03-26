@@ -602,7 +602,7 @@ canvas#buffer {
 
 .control {
   box-sizing:border-box;
-  text-align:center;
+  font-size:11px;
   margin:2px;
   width:60px;
 }
