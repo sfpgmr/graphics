@@ -104,12 +104,9 @@ window.addEventListener('load',()=>{
   }
 
   function cls(){
-    for(var i = 0,e = bufferWidth * bufferHeight;i < e;++i)
+    for(var i = 0,e = bufferWidth * bufferHeight * 4;i < e;++i)
     {
-      bufferData[i * 4] = 0;
-      bufferData[i * 4 + 1]  = 0;
-      bufferData[i * 4 + 2] = 0;
-      bufferData[i * 4 + 3] = 0; 
+      bufferData[i] = 0;
     }
   }
   
