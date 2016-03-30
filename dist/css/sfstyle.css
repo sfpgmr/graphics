@@ -588,11 +588,6 @@ body {
 canvas#view {
   display: block;
   margin:auto;
-  /*width:100%;*/
-}
-
-canvas#buffer {
-  display:none;
 }
 
 #panel {
