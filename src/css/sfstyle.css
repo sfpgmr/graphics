@@ -22,6 +22,10 @@ canvas#view {
   margin:auto;
 }
 
+canvas#buffer {
+  display: none;
+}
+
 #panel {
   margin:auto;
   text-align: center;
@@ -33,6 +37,7 @@ canvas#view {
   margin:2px;
   width:60px;
 }
+
   
 }
 
