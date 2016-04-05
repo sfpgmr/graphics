@@ -331,26 +331,20 @@ window.addEventListener('load',()=>{
   }
 
   function pset(x,y,color){
-    // var offset = (y * virtualWidth + x) * 4;
-    // bufferData[offset] = color.r;
-    // bufferData[offset + 1]  = color.g;
-    // bufferData[offset + 2] = color.b;
-    // bufferData[offset + 3] = color.a; 
+    var offset = (y * bufferWidth + x);
+    buffer[offset] = color;
   }
 
   function preset(x,y){
-    // var offset = (y * virtualWidth + x) * 4;
-    // bufferData[offset] = 0;
-    // bufferData[offset + 1]  = 0;
-    // bufferData[offset + 2] = 0;
-    // bufferData[offset + 3] = 0; 
+    var offset = (y * bufferWidth + x);
+     buffer[offset] = 0;
   }
 
   function cls(){
-    // for(var i = 0,e = virtualWidth * virtualHeight * 4;i < e;++i)
-    // {
-    //   bufferData[i] = 0;
-    // }
+    for(var i = 0,e = bufferWidth * bufferHeight * 4;i < e;++i)
+    {
+       bufferData[i] = 0;
+    }
   }
   
   // メイン
