@@ -2,28 +2,28 @@
 import "babel-polyfill";
 
 // フレームバッファに書き込むシェーダー
-var vshaderFSrc = 
-`precision mediump float;
-attribute vec2 position;
-attribute float color;
-uniform vec2 bufferSize;
-varying float vcolor;
+// var vshaderFSrc = 
+// `precision mediump float;
+// attribute vec2 position;
+// attribute float color;
+// uniform vec2 bufferSize;
+// varying float vcolor;
  
-void main(void) {
-    vec2 bs = bufferSize - bufferSize /  2.0;
-    bs.y = -bs.y;
-    gl_Position = vec4(position / bs, 0.0,1.0);
-    vcolor = color;
-}
-`;
+// void main(void) {
+//     vec2 bs = bufferSize - bufferSize /  2.0;
+//     bs.y = -bs.y;
+//     gl_Position = vec4(position / bs, 0.0,1.0);
+//     vcolor = color;
+// }
+// `;
 
-var fshaderFSrc = 
-`precision mediump float;
-varying float vcolor;
-void main(void){
- gl_FragColor = vec4(vcolor, 0. , 0. , 1.);
-}
-`;
+// var fshaderFSrc = 
+// `precision mediump float;
+// varying float vcolor;
+// void main(void){
+//  gl_FragColor = vec4(vcolor, 0. , 0. , 1.);
+// }
+// `;
 
 // パレットエミュレートシェーダー
 var vshaderPSrc = 
@@ -41,15 +41,15 @@ void main(void) {
 var fshaderPSrc = 
 `precision mediump float;
 
-uniform sampler2D texture;
-uniform vec4 palette_color[8];
+uniform sampler2D tex;
+uniform sampler2D pallet_color;
 
 varying vec2 vtexture_coord;
 
 void main(void){
- vec4 sampcolor = texture2D(texture, vtexture_coord);
- int index = int(sampcolor.r);
- gl_FragColor = palette_color[index];
+ vec4 sampcolor = texture2D(tex, vtexture_coord);
+ vec4 color = texture2D(pallet_color,vec2(sampcolor.x * 32.0,0.5));
+ gl_FragColor = color;
 }
 `;
 
@@ -60,10 +60,35 @@ window.addEventListener('load',()=>{
   var gl;
   var width,height;
   const virtualWidth = 320,virtualHeight = 240;
+  const bufferWidth = 512,bufferHeight = 256;
   var runBtn = document.getElementById('run'),
       pauseBtn = document.getElementById('pause'),
       stopBtn = document.getElementById('stop');
 //      resetBtn = document.getElementById('reset');
+	var buffer = new Uint8Array(bufferWidth * bufferHeight),
+		palletColors = new Uint8Array([
+        0,  0,  0,255,
+        0,  0,255,255,
+        0,255,  0,255,
+        0,255,255,255,
+      255,  0,  0,255,
+      255,  0,255,255,
+      255,255,  0,255,
+      255,255,255,255
+    ]);
+
+  // color 1 で塗りつぶす
+  for(let i = 0,y = 0,ey =  bufferHeight;y < ey;++y){
+    for(let x = 0,ex =  bufferWidth;x < ex;++x){
+      if(x >= virtualWidth || y >= virtualHeight){
+        buffer[i] = 4;
+      } else {
+        buffer[i] = /*((x + y) % 2 ) * */(y / virtualHeight * 8) ;
+      }
+      ++i;
+    }
+  }
+
   var main;
       
   runBtn.disabled = "disabled";
@@ -82,7 +107,7 @@ window.addEventListener('load',()=>{
       
   // con.width = con.offsetWidth;
   // con.height = (con.offsetWidth * 3 / 4) | 0 ;
-  gl = view.getContext('webgl') || view.getContext('experimental-webgl');
+  gl = view.getContext('webgl',{antialias:false}) || view.getContext('experimental-webgl',{antialias:false});
 
   
   // シェーダの作成
@@ -152,6 +177,15 @@ window.addEventListener('load',()=>{
     return {f : frameBuffer, d : depthRenderBuffer, t : fTexture};
   }
   
+  // VBOをバインドし登録する関数
+  function setAttribute(vbo, attL, attS){
+      for(let i in vbo){
+          gl.bindBuffer(gl.ARRAY_BUFFER, vbo[i]);
+          gl.enableVertexAttribArray(attL[i]);
+          gl.vertexAttribPointer(attL[i], attS[i], gl.FLOAT, false, 0, 0);
+      }
+  }
+  
 	// IBOを生成する関数
 	function createIbo(data){
 		var ibo = gl.createBuffer();
@@ -169,20 +203,28 @@ window.addEventListener('load',()=>{
 		-1.0, -1.0,
 		 1.0, -1.0
 	];
+  
 	var texCoord = [
-		0.0, 0.0,
-		1.0, 0.0,
-		0.0, 1.0,
-		1.0, 1.0
-	];
+	0.0, 0.0,
+	 	virtualWidth / bufferWidth , 0.0,
+	 	0.0, virtualHeight / bufferHeight,
+	 	virtualWidth / bufferWidth, virtualHeight / bufferHeight
+	 ];
+  
+	// var texCoord = [
+	// 	0.0, 0.0,
+	// 	1.0 , 0.0,
+	// 	0.0, 1.0,
+	// 	1.0,1.0
+	// ];  
 	var index = [
 		0, 2, 1,
 		2, 3, 1
 	];
+  
 	var vPosition = createVbo(position);
 	var vTexCoord = createVbo(texCoord);
-	var vVBOList  = [vPosition, vTexCoord];
-	var vIndex    = createIbo(index);
+	var iIndex    = createIbo(index);
    
   // canvasを黒でクリア(初期化)する
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -190,41 +232,59 @@ window.addEventListener('load',()=>{
   gl.clearDepth(1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // フレームバッファーに書き込むシェーダー・プログラムの作成
-  let vsF = createShader(vshaderFSrc,gl.VERTEX_SHADER);
-  let fsF = createShader(fshaderFSrc,gl.FRAGMENT_SHADER);
+  let vsP = createShader(vshaderPSrc,gl.VERTEX_SHADER);
+  let fsP = createShader(fshaderPSrc,gl.FRAGMENT_SHADER);
   
-  let prgF = createProgram(vsF,fsF);
+  let prgP = createProgram(vsP,fsP);
   
-  let prgFPos = gl.getAttribLocation(prgF,'position');
-  let prgFColor = gl.getAttribLocation(prgF,'color');
+  let prgPPos = gl.getAttribLocation(prgP,'position');
+  let prgPTexCoord = gl.getAttribLocation(prgP,'texture_coord');
   
-  let attStride = 1;
+  let attStride = 4;
   
-  let vertexPos = [
-    160.0,100.0
-  ];
+  setAttribute([vPosition,vTexCoord],[prgPPos,prgPTexCoord],[2,2]);
+  //setAttribute([vPosition],[prgPPos],[2]);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,iIndex);
   
-  let color = [
-    7.0
-  ];
+  var prgPTexPos = gl.getUniformLocation(prgP,'tex');
+  var prgPPalettPos = gl.getUniformLocation(prgP,'pallet_color');
+  
+  // 仮想ビットマップテクスチャを作る
+  var texture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferWidth, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, buffer);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  //gl.bindTexture(gl.TEXTURE_2D,null);
   
   
-  let vbo = createVbo(vertexPos);
-  let vboColor = createVbo(color);
+	var paletteTexture = gl.createTexture();
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, paletteTexture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, palletColors.length / 4, 1, 0, gl.RGBA,gl.UNSIGNED_BYTE, palletColors);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   
-  gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
-  gl.enableVertexAttribArray(prgFPos);
-  gl.vertexAttribPointer(prgFPos, attStride, gl.FLOAT, false, 0, 0);
+	gl.uniform1i(prgPTexPos, 0);
+	gl.uniform1i(prgPPalettPos, 1);
+  
 
-  gl.bindBuffer(gl.ARRAY_BUFFER,vboColor);
-  gl.enableVertexAttribArray(prgFColor);
-  gl.vertexAttribPointer(prgFColor, attStride, gl.FLOAT, false, 0, 0);
   
   function resize(){
     var cont = document.getElementById('content');
-    view.width = cont.offsetWidth;
-    view.height = cont.offsetWidth * 3 / 4;
+    if(cont.offsetWidth > 700){
+      view.width = virtualWidth * 2;//cont.offsetWidth;
+      view.height = virtualHeight * 2;//cont.offsetWidth * 3 / 4;
+    } else {
+      view.width = virtualWidth;
+      view.height = virtualHeight;
+    }
     width = view.offsetWidth;
     height = view.offsetHeight;
     
@@ -241,10 +301,20 @@ window.addEventListener('load',()=>{
   // レンダリング
   function render(){
     requestAnimationFrame(render);
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.flush(); 
+		gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  	gl.activeTexture(gl.TEXTURE1);
+  	gl.bindTexture(gl.TEXTURE_2D, paletteTexture);
+  	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, palletColors.length / 4, 1, 0, gl.RGBA,gl.UNSIGNED_BYTE, palletColors);
+
+  	gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferWidth, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, buffer);
+    
+    
+    gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+		gl.flush();
     if(status == STATUS.run){
       main && main();
     }
@@ -297,17 +367,21 @@ window.addEventListener('load',()=>{
   function run(){
     var gen = (function * (){
       cls();
-      var  i = 0;
-      let r,g,b;
-      for(let y = 0; y < 240;++y){
-        for(let x = 0; x < 320;++x){
-          i+=1;
-          r = (i >> 8) & 0xff, 
-          g = (i >> 4 ) & 0xff,
-          b = i & 0xff;
-          pset(x,y,{r:r,g:g,b:b,a:255})
+      while(true){
+        let [r,g,b,a] = palletColors;
+        for(let i = 0;i < 7;++i){
+          palletColors[i * 4] = palletColors[(i + 1) * 4];           
+          palletColors[i * 4 + 1] = palletColors[(i + 1) * 4 + 1];           
+          palletColors[i * 4 + 2] = palletColors[(i + 1) * 4 + 2];           
+          palletColors[i * 4 + 3] = palletColors[(i + 1) * 4 + 3];           
         }
-        yield;
+        palletColors[28] = r; 
+        palletColors[29] = g; 
+        palletColors[30] = b; 
+        palletColors[31] = a;
+        for(let y = 0;y < 16;++y){
+          yield;
+        }
       }
       updateStatus(STATUS.stop);
     })();  
