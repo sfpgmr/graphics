@@ -77,17 +77,6 @@ window.addEventListener('load',()=>{
       255,255,255,255
     ]);
 
-  // color 1 で塗りつぶす
-  for(let i = 0,y = 0,ey =  bufferHeight;y < ey;++y){
-    for(let x = 0,ex =  bufferWidth;x < ex;++x){
-      if(x >= virtualWidth || y >= virtualHeight){
-        buffer[i] = 4;
-      } else {
-        buffer[i] = /*((x + y) % 2 ) * */(y / virtualHeight * 8) ;
-      }
-      ++i;
-    }
-  }
 
   var main;
       
@@ -364,10 +353,27 @@ window.addEventListener('load',()=>{
     // }
   }
   
+  // メイン
   function run(){
     var gen = (function * (){
       cls();
+      // color 0-7 で縞模様に塗りつぶす
+      for(let i = 0,y = 0,ey =  bufferHeight;y < ey;++y){
+        for(let x = 0,ex =  bufferWidth;x < ex;++x){
+          if(x >= virtualWidth || y >= virtualHeight){
+            buffer[i] = 4;
+          } else {
+            buffer[i] = /*((x + y) % 2 ) * */((y / virtualHeight * 32) % 8 ) ;
+          }
+          ++i;
+        }
+      }
+
+      yield;
+
       while(true){
+
+        // パレットのスクロール
         let [r,g,b,a] = palletColors;
         for(let i = 0;i < 7;++i){
           palletColors[i * 4] = palletColors[(i + 1) * 4];           
@@ -379,11 +385,13 @@ window.addEventListener('load',()=>{
         palletColors[29] = g; 
         palletColors[30] = b; 
         palletColors[31] = a;
+
+        // ウェイト
         for(let y = 0;y < 16;++y){
           yield;
         }
       }
-      updateStatus(STATUS.stop);
+      // updateStatus(STATUS.stop);
     })();  
     main = gen.next.bind(gen);
   }
