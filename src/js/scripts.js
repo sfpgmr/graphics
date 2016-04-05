@@ -343,7 +343,7 @@ window.addEventListener('load',()=>{
   function cls(){
     for(var i = 0,e = bufferWidth * bufferHeight * 4;i < e;++i)
     {
-       bufferData[i] = 0;
+       buffer[i] = 0;
     }
   }
   
