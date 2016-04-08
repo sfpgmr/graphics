@@ -60,17 +60,18 @@ void main(void){
  
  // バイトデータの中でビットが立っているかどうかを調べる
  // Rプレーン
- float r = floor(mod(rt.x * 256.0 / t,2.0)) * 4.0;
+ float r = floor(mod(min(rt.x * 256.0,255.0) / t,2.0)) * 4.0;
  // Gプレーン
- float g = floor(mod(gt.x * 256.0 / t,2.0)) * 2.0;
+ float g = floor(mod(min(gt.x * 256.0,255.0) / t,2.0)) * 2.0;
  // Bプレーン
- float b = floor(mod(bt.x * 256.0 / t,2.0));
+ float b = floor(mod(min(bt.x * 256.0,255.0) / t,2.0));
 
  // 各色の値を足して正規化を行い、パレットインデックスから実際の色を得る 
  vec4 p = texture2D(pallet_color,vec2((r + g + b) / 8.0 ,0.5));
- float ar = floor(mod(p.x * 256.0 / 4.0,2.0));
- float ag = floor(mod(p.x * 256.0 / 2.0,2.0));
- float ab = floor(mod(p.x * 256.0,2.0));
+ float i = min(p.x * 256.0,255.0);
+ float ar = floor(mod(i * 0.25,2.0)); // bit3
+ float ag = floor(mod(i * 0.5,2.0));  // bit2
+ float ab = floor(mod(i,2.0)); // bit1
  
  gl_FragColor = vec4(ar,ag,ab,1.0);
 }
@@ -403,9 +404,16 @@ window.addEventListener('load',()=>{
   function pset(x,y,color){
     var offset = (y * bufferXSize + x / 8) | 0;
     var bitpos = x % 8;
-    bufferB[offset] |= (color & 1) << bitpos;
-    bufferG[offset] |= ((color >> 1) & 1) << bitpos;
-    bufferR[offset] |= ((color >> 2) & 1) << bitpos;
+
+    
+    let b = (color & 1) << bitpos;
+    let m = ~(1 << bitpos) & 0xff;
+    let g = ((color >>> 1) & 1) << bitpos;
+    let r = ((color >>> 2) & 1) << bitpos;
+
+    bufferB[offset] = (bufferB[offset] & m) | b;
+    bufferG[offset] = (bufferG[offset] & m) | g;
+    bufferR[offset] = (bufferR[offset] & m) | r;
   }
 
   function preset(x,y){
@@ -429,40 +437,69 @@ window.addEventListener('load',()=>{
   function run(){
     var gen = (function * (){
       cls();
-      // color 0-7 で縞模様に塗りつぶす
-      for(let i = 0,y = 0,ey =  bufferHeight;y < ey;++y){
-        for(let x = 0,ex =  bufferXSize;x < ex;++x){
-          if(x >= virtualWidth / 8 || y >= virtualHeight){
-            bufferR[i] = 0xff;
-            bufferG[i] = 0xff;
-            bufferB[i] = 0xff;
-          } else {
-            bufferR[i] = 0xcc;
-            bufferG[i] = 0xcc;
-            bufferB[i] = 0xcc;
+      while (true) {
+        palletColors.set([0,1,2,3,4,5,6,7]);
+        for (let y = 0; y < virtualHeight; ++y) {
+          for (let x = 0; x < virtualWidth; ++x) {
+            pset(x, y, y % 8);
           }
-          ++i;
-        }
-      }
-
-      
-      yield;
-
-      while(true){
-
-        //パレットのスクロール
-        let p = palletColors[0];
-        for(let i = 0;i < 7;++i){
-          palletColors[i] = palletColors[i+1];
-        }
-        palletColors[7] = p; 
-
-        // ウェイト
-        for(let y = 0;y < 16;++y){
           yield;
         }
+
+        //パレットのスクロール
+        for(let t = 0;t < 128;++t)
+        {
+          let p = palletColors[0];
+          for (let i = 0; i < 7; ++i) {
+            palletColors[i] = palletColors[i + 1];
+          }
+          palletColors[7] = p;
+          yield;
+          yield;
+        }
+
+        for (let y = 0; y < virtualHeight; ++y) {
+          for (let x = 0; x < virtualWidth; ++x) {
+            pset(x, y, x % 8);
+          }
+          yield;
+        }
+
+        //パレットのスクロール
+        for(let t = 0;t < 128;++t)
+        {
+          let p = palletColors[0];
+          for (let i = 0; i < 7; ++i) {
+            palletColors[i] = palletColors[i + 1];
+          }
+          palletColors[7] = p;
+          yield;
+          yield;
+        }
+        cls();
+        yield;
+        
+        for(let t = 0;t < 640;++t){
+          for(let u = 0;u < 128;++u){
+            pset(Math.random() * 320,Math.random() * 240,Math.random() * 8);
+          }
+          yield;
+        }
+        //パレットのスクロール
+        for(let t = 0;t < 128;++t)
+        {
+          for (let i = 0; i < 8; ++i) {
+            palletColors[i] = 0;
+          }
+
+          palletColors[t % 7 + 1] = t % 7 + 1;
+
+          for(let i = 0;i < 4;++i){
+            yield;
+          }
+        }
       }
-      // updateStatus(STATUS.stop);
+      updateStatus(STATUS.stop);
     })();  
     main = gen.next.bind(gen);
   }
