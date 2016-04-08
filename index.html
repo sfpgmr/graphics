@@ -37,15 +37,23 @@
 </head>
 <body>
   <div class="content" id="content">
+   <header>
    <h1 class="center">SFPGMR's Graphics </h1>
    <p class="center">～グラフィックスの古典的技術を懐かしむ～</p>
+   </header>
+  <section>
+  <h3 class="center" >Currrent</h3>
   <canvas id="view"></canvas>
-  <div id="panel">
+  </section>
+  <section id="panel">
     <button class="button control" id="run">run</button>
     <button class="button control" id="pause">pause</button>
     <button class="button control" id="stop">stop</button>
-  </div>
-  <div class="recent">
+  </section>
+  <section id="repo">
+    <a href="https://github.com/sfpgmr/graphics">Repository</a>
+  </section>
+  <section class="recent">
     <h3>Recent</h3>
     <ul>
       <li><a href="./devver/20160408/">20160408</a></li>
@@ -54,7 +62,7 @@
       <li><a href="./devver/20160327/">20160327</a></li>
       <!-- #recent -->
     </ul>
-  </div>
+  </section>
   </div>
   <script src="./dist/js/bundle.js"></script>
 </body>
