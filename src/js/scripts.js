@@ -53,8 +53,10 @@ uniform float time;
 
 varying vec2 vtexture_coord;
 
+// グラフィック表示
 vec4 graphicPlane(void)
 {
+  //テクスチャ座標よりビット位置を求め、そのビットが立った2進数値を得る。
   float t = exp2(floor(mod(vtexture_coord.x * 512.0,8.0)));
   // RGB各プレーンの現在座標のバイトデータを読み込む
   vec4 rt = texture2D(textureR, vtexture_coord);
@@ -78,40 +80,54 @@ vec4 graphicPlane(void)
   return vec4(ar,ag,ab,1.0);
 }
 
+// 文字表示
 vec4 textPlane(void){
+  // キャラクタコードを読み出し
   vec4 cct = texture2D(textureCharCode, vtexture_coord);
+  float cc = min(cct.x * 256.0,255.0);// キャラクターコード
+
+  // アトリビュートを読み出し
   vec4 attrt = texture2D(textureCharAttr, vtexture_coord);
   
+  // 表示対象の文字のビット位置を求める
   float x = exp2(floor(mod(vtexture_coord.x * 512.0,8.0)));
+  // 表示対象の文字のY位置を求める
   float y = floor(mod(vtexture_coord.y * 256.0,8.0));
   
-  float i = min(attrt.x * 256.0,255.0);
+  // アトリビュートの評価 
+
+  float i = min(attrt.x * 256.0,255.0);// アトリビュートデータ
   
+  // キャラクタセット(0.0 .. セット0, 1.0 .. セット1 )
   float att = floor(mod(i / 128.0,2.0)) * 8.0;// bit 7
 
+  // 文字色
   float ccg = floor(mod(i / 64.0,2.0));// bit 6
   float ccr = floor(mod(i / 32.0,2.0));// bit 5
   float ccb = floor(mod(i / 16.0,2.0));// bit 4
 
-  float attg = floor(mod(i / 4.0,2.0));// bit 2
-  float attr = floor(mod(i / 2.0,2.0));// bit 1
-  float attb = floor(mod(i ,2.0));// bit 0
+  // 背景色
+  float bgg = floor(mod(i / 4.0,2.0));// bit 2
+  float bgr = floor(mod(i / 2.0,2.0));// bit 1
+  float bgb = floor(mod(i ,2.0));// bit 0
   
-  float cc = min(cct.x * 256.0,255.0);
 
+  // フォント読み出し位置
   vec2 fontpos = vec2(cc / 256.0,(y + att) / 16.0);
-  
+  // フォントデータの読み出し
   vec4 pixByte = texture2D(textureFont,fontpos);
+  // 指定位置のビットが立っているかチェック
   float pixBit = floor(mod(min(pixByte.x * 256.0,255.0) / x,2.0));
   
-  if(pixBit > 0.0){
+  if(pixBit == 1.0){
+    // ビットが立っているときは、文字色を設定
     return vec4(ccr,ccg,ccb,1.0);
   } 
-  return vec4(attr,attb,attg,1.0);
+  // ビットが立っていないときは背景色を設定
+  return vec4(bgr,bgb,bgg,1.0);
 }
 
 void main(void){
-  //テクスチャ座標よりビット位置を求め、そのビットが立った2進数値を得る。
   vec4 textColor = textPlane();
   if((textColor.r + textColor.g + textColor.b) > 0.0){
     gl_FragColor = textColor;  
