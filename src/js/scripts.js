@@ -1,6 +1,7 @@
 "use strict";
 import "babel-polyfill";
 import {fontData} from "./mz700fon";
+import {charCodes,canaCodes} from "./charCodes";
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -124,7 +125,7 @@ vec4 textPlane(void){
     return vec4(ccr,ccg,ccb,1.0);
   } 
   // ビットが立っていないときは背景色を設定
-  return vec4(bgr,bgb,bgg,1.0);
+  return vec4(bgr,bgg,bgb,1.0);
 }
 
 void main(void){
@@ -160,7 +161,7 @@ window.addEventListener('load',()=>{
   const virtualWidth = 320,virtualHeight = 240;
   const bufferWidth = 512 ,bufferHeight = 256,bufferXSize = bufferWidth / 8;
   const fontTexWidth = 256,fontTexHeight = 16;//8 * 16 * 2;
-  const charCodeBufferWidth = 512 / 8,charCodeBufferHeight = 32;
+  const charCodeBufferWidth = 512 / 8,charCodeBufferHeight = 32,consoleWidth = 40,consoleHeight = 30;
   var runBtn = document.getElementById('run'),
       pauseBtn = document.getElementById('pause'),
       stopBtn = document.getElementById('stop');
@@ -175,12 +176,15 @@ window.addEventListener('load',()=>{
       charAttrBuffer = new Uint8Array(charCodeBufferWidth * charCodeBufferHeight);
   var fontBuffer = new Uint8Array(fontTexWidth * fontTexHeight);
   
+  // ビットのMSBとLSBを入れ替えるメソッド
   function rev(x){
-    x = (x & 0x55555555) << 1 | (x >>> 1) & 0x55555555;
-    x = (x & 0x33333333) << 2 | (x >>> 2) & 0x33333333;
-    x = (x & 0x0F0F0F0F) << 4 | (x >>> 4) & 0x0F0F0F0F;
-    x = (x << 24) | ((x & 0xFF00) << 8) |
-      ((x >>> 8) & 0xFF00) | (x >>> 24);
+    x = x & 0xff;
+    // 0bitと1bit、2bitと3bit、4bitと5bit、6bitと7ビットの反転
+    x = ((x & 0x55) << 1) | ((x >>> 1) & 0x55);
+    // 0-1bitと2-3bit、4-5bitと6-7bitの反転
+    x = ((x & 0x33) << 2) | ((x >>> 2) & 0x33);
+    // 0-3bit、4-7bitの反転
+    x = ((x & 0x0F) << 4) | ((x >>> 4) & 0x0F);
     return x;
   }
   
@@ -193,7 +197,7 @@ window.addEventListener('load',()=>{
       idx = i % 256;
       d.forEach((byteChar,iy)=>{
         let byte = parseInt(byteChar,2);
-        fontBuffer[idx + (iy + offset) * 256] = rev(byte) >>> 24;
+        fontBuffer[idx + (iy + offset) * 256] = rev(byte);
       });
     });
   }
@@ -320,12 +324,6 @@ window.addEventListener('load',()=>{
 	 	virtualWidth / bufferWidth, virtualHeight / bufferHeight
 	 ];
   
-	// var texCoord = [
-	// 	0.0, 0.0,
-	// 	1.0 , 0.0,
-	// 	0.0, 1.0,
-	// 	1.0,1.0
-	// ];  
 	var index = [
 		0, 2, 1,
 		2, 3, 1
@@ -365,71 +363,36 @@ window.addEventListener('load',()=>{
   var prgPTime = gl.getUniformLocation(prgP,'time');
   
   // 仮想ビットマップテクスチャを作る
-  var textureB = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D,textureB);
-//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferB);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   
-  var textureG = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D,textureG);
-//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferG);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  var textureR = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE2);
-  gl.bindTexture(gl.TEXTURE_2D,textureR);
-//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  function createLuminaceTexture(textureNo,width,height,srcBuffer)
+  {
+    var texture = gl.createTexture();
+    gl.activeTexture(textureNo);
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+  //	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, width, height, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, srcBuffer);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;   
+  }
   
-	var paletteTexture = gl.createTexture();
-	gl.activeTexture(gl.TEXTURE3);
-	gl.bindTexture(gl.TEXTURE_2D, paletteTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, palletColors.length , 1, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, palletColors);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-	var fontTexture = gl.createTexture();
-	gl.activeTexture(gl.TEXTURE4);
-	gl.bindTexture(gl.TEXTURE_2D, fontTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, fontTexWidth , fontTexHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, fontBuffer);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  function updateLuminanceTexture(textureNo,texture,width,height,srcBuffer)
+  {
+    gl.activeTexture(textureNo);
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, width, height, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, srcBuffer);
+  }
   
-	var charCodeTexture = gl.createTexture();
-	gl.activeTexture(gl.TEXTURE5);
-	gl.bindTexture(gl.TEXTURE_2D, charCodeTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, charCodeBufferWidth , charCodeBufferHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, charCodeBuffer);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  var textureB = createLuminaceTexture(gl.TEXTURE0,bufferXSize,bufferHeight,bufferB);
+  var textureG = createLuminaceTexture(gl.TEXTURE1,bufferXSize,bufferHeight,bufferG);
+  var textureR = createLuminaceTexture(gl.TEXTURE2,bufferXSize,bufferHeight,bufferR);
   
-	var charAttrTexture = gl.createTexture();
-	gl.activeTexture(gl.TEXTURE6);
-	gl.bindTexture(gl.TEXTURE_2D, charAttrTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, charCodeBufferWidth , charCodeBufferHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, charAttrBuffer);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	var paletteTexture = createLuminaceTexture(gl.TEXTURE3,palletColors.length,1,palletColors);
+	var fontTexture = createLuminaceTexture(gl.TEXTURE4,fontTexWidth,fontTexHeight,fontBuffer);
+	var charCodeTexture = createLuminaceTexture(gl.TEXTURE5,charCodeBufferWidth,charCodeBufferHeight,charCodeBuffer);
+	var charAttrTexture = createLuminaceTexture(gl.TEXTURE6,charCodeBufferWidth,charCodeBufferHeight,charAttrBuffer);
 
 	gl.uniform1i(prgPTexBPos, 0);
 	gl.uniform1i(prgPTexGPos, 1);
@@ -438,9 +401,7 @@ window.addEventListener('load',()=>{
 	gl.uniform1i(prgPTexFont, 4);
 	gl.uniform1i(prgPTexCharCode, 5);
 	gl.uniform1i(prgPTexCharAttr, 6);
-  
 
-  
   function resize(){
     var cont = document.getElementById('content');
     if(cont.offsetWidth > 700){
@@ -469,33 +430,15 @@ window.addEventListener('load',()=>{
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  	gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D,textureB);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferB);
-    
-  	gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D,textureG);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferG);
 
-  	gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D,textureR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, bufferXSize, bufferHeight, 0, gl.LUMINANCE, 	gl.UNSIGNED_BYTE, bufferR);
+    updateLuminanceTexture(gl.TEXTURE0,textureB,bufferXSize,bufferHeight,bufferB);
+    updateLuminanceTexture(gl.TEXTURE1,textureG,bufferXSize,bufferHeight,bufferG);
+    updateLuminanceTexture(gl.TEXTURE2,textureR,bufferXSize,bufferHeight,bufferR);
+ 
+    updateLuminanceTexture(gl.TEXTURE3,paletteTexture,palletColors.length,1,palletColors);
 
-  	gl.activeTexture(gl.TEXTURE3);
-  	gl.bindTexture(gl.TEXTURE_2D, paletteTexture);
-  	gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, palletColors.length, 1, 0,gl.LUMINANCE,gl.UNSIGNED_BYTE, palletColors);
-    
-    gl.activeTexture(gl.TEXTURE4);
-    gl.bindTexture(gl.TEXTURE_2D, fontTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, fontTexWidth , fontTexHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, fontBuffer);
-    
-    gl.activeTexture(gl.TEXTURE5);
-    gl.bindTexture(gl.TEXTURE_2D, charCodeTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, charCodeBufferWidth , charCodeBufferHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, charCodeBuffer);
-  
-    gl.activeTexture(gl.TEXTURE6);
-    gl.bindTexture(gl.TEXTURE_2D, charAttrTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, charCodeBufferWidth , charCodeBufferHeight, 0, gl.LUMINANCE,gl.UNSIGNED_BYTE, charAttrBuffer);
+    updateLuminanceTexture(gl.TEXTURE5,charCodeTexture,charCodeBufferWidth,charCodeBufferHeight,charCodeBuffer);
+    updateLuminanceTexture(gl.TEXTURE6,charAttrTexture,charCodeBufferWidth,charCodeBufferHeight,charAttrBuffer);
 
     gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
 		gl.flush();
@@ -524,6 +467,8 @@ window.addEventListener('load',()=>{
         break;
     }
   }
+  
+  // グラフィックのメソッドたち
 
   function pset(x,y,color){
     var offset = (y * bufferXSize + x / 8) | 0;
@@ -549,13 +494,45 @@ window.addEventListener('load',()=>{
   }
 
   function cls(){
-    for(var i = 0,e = bufferXSize * bufferHeight;i < e;++i)
-    {
+    for(var i = 0,e = bufferXSize * bufferHeight;i < e;++i) {
        bufferB[i] = 0;
        bufferG[i] = 0;
        bufferR[i] = 0;
     }
+    
+    for(var i = 0,e = charCodeBufferWidth * charCodeBufferHeight;i < e;++i){
+      charCodeBuffer[i] = 0;
+      charAttrBuffer[i] = 0;
+    }
   }
+  
+  // 文字列の表示
+  function addPosition(offset,delta)
+  {
+    offset += delta;
+  }
+  
+  function print(x,y,str,color,bgcolor,hirakana = false){
+    let offset = x + y * charCodeBufferWidth;
+    for(let i = 0,e = str.length;i < e;++i){
+      let code = str.charCodeAt(i);
+      if(code >= 0xff60 && code < 0xffa0){
+        code -= 0xff60;
+        charCodeBuffer[offset] = canaCodes[code][0];
+        charAttrBuffer[offset] = (color << 4) | bgcolor | canaCodes[code][1];
+        if(hirakana) charAttrBuffer[offset] |= 0x80;
+        offset += 1;
+      } else if(code < 0xff){
+        charCodeBuffer[offset] = charCodes[code][0];
+        charAttrBuffer[offset] = (color << 4) | bgcolor | charCodes[code][1];
+        offset += 1;
+      } else
+      {
+        offset += 1;
+      }
+    }
+  }
+  
   
   // メイン
   function run(){
@@ -563,36 +540,36 @@ window.addEventListener('load',()=>{
       while (true) {
         cls();
         palletColors.set([0,1,2,3,4,5,6,7]);
-        for (let y = 0; y < virtualHeight; ++y) {
-          for (let x = 0; x < virtualWidth; ++x) {
-            if((((y / 8) | 0) & 1) > 0){
-              if(x % 16 < 8){
-                pset(x, y, y % 8);
-              } else {
-                pset(x, y, x % 8);
-              }
-            } else {
-              if(x % 16 >= 8){
-                pset(x, y, 7 - y % 8);
-              } else {
-                pset(x, y, 7 - x % 8);
-              }
-            } 
-          }
-          yield;
-        }
+        // for (let y = 0; y < virtualHeight; ++y) {
+        //   for (let x = 0; x < virtualWidth; ++x) {
+        //     if((((y / 8) | 0) & 1) > 0){
+        //       if(x % 16 < 8){
+        //         pset(x, y, y % 8);
+        //       } else {
+        //         pset(x, y, x % 8);
+        //       }
+        //     } else {
+        //       if(x % 16 >= 8){
+        //         pset(x, y, 7 - y % 8);
+        //       } else {
+        //         pset(x, y, 7 - x % 8);
+        //       }
+        //     } 
+        //   }
+        //   yield;
+        // }
 
-        //パレットのスクロール
-        for(let t = 0;t < 128;++t)
-        {
-          let p = palletColors[0];
-          for (let i = 0; i < 7; ++i) {
-            palletColors[i] = palletColors[i + 1];
-          }
-          palletColors[7] = p;
-          yield;
-          yield;
-        }
+        // //パレットのスクロール
+        // for(let t = 0;t < 128;++t)
+        // {
+        //   let p = palletColors[0];
+        //   for (let i = 0; i < 7; ++i) {
+        //     palletColors[i] = palletColors[i + 1];
+        //   }
+        //   palletColors[7] = p;
+        //   yield;
+        //   yield;
+        // }
         
         // for(let t = 0;t < 640;++t){
         //   for(let u = 0;u < 128;++u){
@@ -613,21 +590,21 @@ window.addEventListener('load',()=>{
         //     yield;
         //   }
         // }
-        {
-          for(let color = 0;color < 8;++color){
-            let i = 0x0;
-            for(let y = 0;y < 16;++y){
-              for(let x = 0;x < 16;++x){
-                charCodeBuffer[x + y * charCodeBufferWidth] = i % 256;
-                charAttrBuffer[x + y * charCodeBufferWidth] = color << 4 | (7 - color);
-                charCodeBuffer[x + 16 + y * charCodeBufferWidth] = i % 256;
-                charAttrBuffer[x + 16 + y * charCodeBufferWidth] = 0x80 | color << 4 | (7-color);
-                ++i;
-              }
-              yield;
-            }
-          }
-      }
+        // {
+        //   for(let color = 0;color < 8;++color){
+        //     let i = 0x0;
+        //     for(let y = 0;y < 16;++y){
+        //       for(let x = 0;x < 16;++x){
+        //         charCodeBuffer[x + y * charCodeBufferWidth] = i % 256;
+        //         charAttrBuffer[x + y * charCodeBufferWidth] = color << 4 | (7 - color);
+        //         charCodeBuffer[x + 16 + y * charCodeBufferWidth] = i % 256;
+        //         charAttrBuffer[x + 16 + y * charCodeBufferWidth] = 0x80 | color << 4 | (7-color);
+        //         ++i;
+        //       }
+        //       yield;
+        //     }
+        //   }
+        // }
         
         // yield;
         // for(let i = 256;i < 512;++i){
@@ -640,10 +617,13 @@ window.addEventListener('load',()=>{
         //   charAttrBuffer[(i / 40 * 64) | 0 + i % 40] =0xf1;
         // }
         // yield;
-        cls();
+        print(0,0,"ABCDEFGHIJK0123456789",3,1);
+        print(0,1,"abcdefg+-=()ｱｲｳｴｵｶｷｸｹｺ@",3,1);
+        print(0,2,"abcdefg+-=()ｱｲｳｴｵｶｷｸｹｺ@",3,1,true);
         for(let i = 0;i < 128;++i){
           yield;
         }
+        cls();
       }
       updateStatus(STATUS.stop);
     })();  
