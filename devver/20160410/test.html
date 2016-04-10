@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Graphics</title>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="./css/sfstyle.css" />
+</head>
+<body>
+  <div class="content">
+    <iframe id="f01" frameborder="0" src="index.html" seamless="seamless" width="100%" ></iframe>
+  </div>
+  <script>
+    window.addEventListener('load',function(){
+      var cont = document.getElementById('f01');
+      cont.height = cont.offsetWidth;
+    });
+  </script>
+</body>
+ 
+</html>
