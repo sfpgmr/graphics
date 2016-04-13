@@ -128,6 +128,6 @@ gulp.task('default',['js','postcss','browser-sync','html'],function(){
     watch('./src/js/**/*.js',()=>gulp.start(['js']));
     watch('./src/html/**/*.html',()=>gulp.start(['html']));
     watch('./src/css/**/*.css',()=>gulp.start(['postcss']));
-    watch('./dist/**/*.*',()=>gulp.start(['bs-reload']));
+    //watch('./dist/**/*.*',()=>gulp.start(['bs-reload']));
 });
 }();

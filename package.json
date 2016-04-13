@@ -34,5 +34,8 @@
     "postcss-simple-vars": "^1.0.0",
     "uglifyify": "^3.0.1",
     "vinyl-source-stream": "^1.1.0"
+  },
+  "dependencies": {
+    "strip-comments": "^0.4.4"
   }
 }

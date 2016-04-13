@@ -158,10 +158,10 @@ window.addEventListener('load',()=>{
   var view = document.getElementById('view');
   var gl;
   var width,height;
-  const virtualWidth = 320,virtualHeight = 240;
+  const virtualWidth = 320,virtualHeight = 200;
   const bufferWidth = 512 ,bufferHeight = 256,bufferXSize = bufferWidth / 8;
   const fontTexWidth = 256,fontTexHeight = 16;//8 * 16 * 2;
-  const charCodeBufferWidth = 512 / 8,charCodeBufferHeight = 32,consoleWidth = 40,consoleHeight = 30;
+  const charCodeBufferWidth = 512 / 8,charCodeBufferHeight = 32,consoleWidth = 40,consoleHeight = 25;
   var runBtn = document.getElementById('run'),
       pauseBtn = document.getElementById('pause'),
       stopBtn = document.getElementById('stop');
@@ -522,14 +522,30 @@ window.addEventListener('load',()=>{
         charAttrBuffer[offset] = (color << 4) | bgcolor | canaCodes[code][1];
         if(hirakana) charAttrBuffer[offset] |= 0x80;
         offset += 1;
-      } else if(code < 0xff){
+      } else if(code < 0x80){
         charCodeBuffer[offset] = charCodes[code][0];
         charAttrBuffer[offset] = (color << 4) | bgcolor | charCodes[code][1];
+        if(hirakana) charAttrBuffer[offset] |= 0x80;
         offset += 1;
-      } else
-      {
+      } else if(code <= 0xff){
+        charCodeBuffer[offset] = code;
+        charAttrBuffer[offset] = (color << 4) | bgcolor;
+        if(hirakana) charAttrBuffer[offset] |= 0x80;
+        offset += 1;
+      } else {
         offset += 1;
       }
+    }
+  }
+  
+  function printDirect(x,y,str,color,bgcolor,charset = 0){
+    let offset = x + y * charCodeBufferWidth;
+    for(let i = 0,e = str.length;i < e;++i){
+        let code = str.charCodeAt(i);
+        charCodeBuffer[offset] = code;
+        charAttrBuffer[offset] = (color << 4) | bgcolor;
+        charAttrBuffer[offset] |= (charset << 7);
+        offset += 1;
     }
   }
   
@@ -539,7 +555,7 @@ window.addEventListener('load',()=>{
     var gen = (function * (){
       while (true) {
         cls();
-        palletColors.set([0,1,2,3,4,5,6,7]);
+        // palletColors.set([0,1,2,3,4,5,6,7]);
         // for (let y = 0; y < virtualHeight; ++y) {
         //   for (let x = 0; x < virtualWidth; ++x) {
         //     if((((y / 8) | 0) & 1) > 0){
@@ -559,7 +575,7 @@ window.addEventListener('load',()=>{
         //   yield;
         // }
 
-        // //パレットのスクロール
+        // パレットのスクロール
         // for(let t = 0;t < 128;++t)
         // {
         //   let p = palletColors[0];
@@ -617,10 +633,68 @@ window.addEventListener('load',()=>{
         //   charAttrBuffer[(i / 40 * 64) | 0 + i % 40] =0xf1;
         // }
         // yield;
-        print(0,0,"ABCDEFGHIJK0123456789",3,1);
-        print(0,1,"abcdefg+-=()ｱｲｳｴｵｶｷｸｹｺ@",3,1);
-        print(0,2,"abcdefg+-=()ｱｲｳｴｵｶｷｸｹｺ@",3,1,true);
-        for(let i = 0;i < 128;++i){
+        let mes =  'MZ-700ﾌｫﾝﾄｦﾋｮｳｼﾞﾃﾞﾓ';
+        let mes1 = '                   ';
+        
+        for(let i = 0;i < 5;++i){
+          print(20 - (mes.length / 2) | 0,10,mes,7,0);
+          for(let j = 0;j < 16;++j){
+            yield;
+          }
+          print(20 - (mes1.length / 2) | 0,10,mes1,7,0);
+          for(let j = 0;j < 16;++j){
+            yield;
+          }
+        }
+        {
+          let i = 0;
+          let xs = 0, xe = 40 ,ys = 0,ye = 25;
+          let x = 0 , y = 0, c = 0;
+          while(true){
+            for(x = xs; x < xe; ++x){
+              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+              ++i;
+              i = i % 512;
+              yield;
+            }
+            ++c;
+            --x;
+            ++ys;
+            if((xs >= xe) || (ys >= ye)) break;
+            for(y = ys; y < ye; ++y){
+              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+              ++i;
+              i = i % 512;
+              yield;
+            }
+            ++c;
+            --y;
+            --xe;
+            if((xs >= xe) || (ys >= ye)) break;
+            for(x = xe - 1; x >= xs ; --x){
+              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+              ++i;
+              i = i % 512;
+              yield;
+            }
+            ++c;
+            --ye;
+            ++x;
+            if((xs >= xe) || (ys >= ye)) break;
+            for(y = ye - 1; y >= ys;--y){
+              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+              ++i;
+              i = i % 512;
+              yield;
+            }
+            ++c;
+            ++y;
+            ++xs;
+            if((xs >= xe) || (ys >= ye)) break;
+          }
+          
+        }
+        for(let j = 0;j < 64;++j){
           yield;
         }
         cls();
