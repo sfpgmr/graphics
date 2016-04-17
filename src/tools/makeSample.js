@@ -45,7 +45,7 @@ readDir('./res/out/')
       let sampleData = {sampleRate:audioData.sampleRate};
       sampleData.samples = '';
       let samples = Array.prototype.slice.call(audioData.channelData[0].map((d)=>{
-        return Math.min(((d + 1.0) * 256.0),255.0) >>> 4;        
+        return Math.min(((d + 1.0) * 128.0),255.0) >>> 4;        
       }));
       if((samples.length % 2) != 0){
         samples.push(8);

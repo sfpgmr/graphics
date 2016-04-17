@@ -29,7 +29,7 @@ export var seqData = {
       name: 'part5',
       channel: 3,
       mml:
-      `s0.01,0.01,1.0,0.05 o5 t140 @11 l16 q90 $v40@11aaaaaa@18v40a8`
+      `s0.01,0.01,1.0,0.05 o5 t140 @11 l16  $ q40 v30 @11 bb @18 q100 v40 a8`
     }
      ,
     {
