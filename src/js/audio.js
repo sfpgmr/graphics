@@ -1,15 +1,30 @@
 "use strict";
 //// Web Audio API ラッパークラス ////
+
+// MMLParserはmohayonaoさんのもの
+// https://github.com/mohayonao/mml-iterator
+
 import Syntax from "./Syntax";
-import Scanner from "./MMLParser";
+import Scanner from "./Scanner";
+import MMLParser from "./MMLParser";
+import DefaultParams from "./DefaultParams";
+
 
 // var fft = new FFT(4096, 44100);
-var BUFFER_SIZE = 1024;
-var TIME_BASE = 96;
+const BUFFER_SIZE = 1024;
+const TIME_BASE = 96;
 
 var noteFreq = [];
-for (var i = -81; i < 46; ++i) {
+for (var i = -69; i < 58; ++i) {
   noteFreq.push(Math.pow(2, i / 12));
+}
+
+var midiFreq = [];
+for(let i = 0;i < 127;++i){
+  midiFreq.push(midicps(i));
+}
+function midicps(noteNumber) {
+  return 440 * Math.pow(2, (noteNumber - 69) * 1 / 12);
 }
 
 var SquareWave = {
@@ -99,131 +114,201 @@ export function createWaveSampleFromWaves(audioctx, sampleLength) {
   }
 }
 
-export function WaveTexture(wave) {
-  this.wave = wave || waves[0];
-  this.tex = new CanvasTexture(320, 10 * 16);
-  this.render();
+// 参考：http://www.g200kg.com/archives/2014/12/webaudioapiperi.html
+function fourier(waveform,len){
+    var real=new Float32Array(len),imag=new Float32Array(len);
+    var wavlen=waveform.length;
+    for(var i = 0; i < len; ++i){
+        for(var j = 0; j < len; ++j){
+            var wavj = j / len * wavlen;
+            var d = waveform[wavj|0];
+            var th = i * j / len * 2 * Math.PI;
+            real[i] += Math.cos(th) * d;
+            imag[i] += Math.sin(th) * d;
+        }
+    }
+    return [real,imag];
 }
 
-WaveTexture.prototype = {
-  render: function () {
-    var ctx = this.tex.ctx;
-    var wave = this.wave;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.beginPath();
-    ctx.strokeStyle = 'white';
-    for (var i = 0; i < 320; i += 10) {
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, 255);
+function createPeriodicWaveFromWaves(audioctx) {
+  return waves.map((d,i)=>{
+    if(i != 8){
+      let waveData = waves[i];
+      let freqData = fourier(waveData,waveData.length);
+      return audioctx.createPeriodicWave(freqData[0],freqData[1]);
+    } else {
+      let waveData = [];
+      for(let j = 0,e = waves[i].length;j < e;++j){
+        waveData.push(Math.random() * 2.0 - 1.0);        
+      }
+      let freqData = fourier(waveData,waveData.length);
+      return audioctx.createPeriodicWave(freqData[0],freqData[1]);
     }
-    for (var i = 0; i < 160; i += 10) {
-      ctx.moveTo(0, i);
-      ctx.lineTo(320, i);
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.stroke();
-    for (var i = 0, c = 0; i < ctx.canvas.width; i += 10, ++c) {
-      ctx.fillRect(i, (wave[c] > 0) ? 80 - wave[c] * 80 : 80, 10, Math.abs(wave[c]) * 80);
-    }
-    this.tex.texture.needsUpdate = true;
-  }
-};
+  });
+}
+
+
+
+// export class WaveTexture { 
+//   constructor(wave) {
+//     this.wave = wave || waves[0];
+//     this.tex = new CanvasTexture(320, 10 * 16);
+//     this.render();
+//   }
+
+//   render() {
+//     var ctx = this.tex.ctx;
+//     var wave = this.wave;
+//     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+//     ctx.beginPath();
+//     ctx.strokeStyle = 'white';
+//     for (var i = 0; i < 320; i += 10) {
+//       ctx.moveTo(i, 0);
+//       ctx.lineTo(i, 255);
+//     }
+//     for (var i = 0; i < 160; i += 10) {
+//       ctx.moveTo(0, i);
+//       ctx.lineTo(320, i);
+//     }
+//     ctx.fillStyle = 'rgba(255,255,255,0.7)';
+//     ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
+//     ctx.stroke();
+//     for (var i = 0, c = 0; i < ctx.canvas.width; i += 10, ++c) {
+//       ctx.fillRect(i, (wave[c] > 0) ? 80 - wave[c] * 80 : 80, 10, Math.abs(wave[c]) * 80);
+//     }
+//     this.tex.texture.needsUpdate = true;
+//   }
+// };
 
 /// エンベロープジェネレーター
-export function EnvelopeGenerator(voice, attack, decay, sustain, release) {
+export class EnvelopeGenerator{
+  constructor(voice, attack, decay, sustain, release) {
   this.voice = voice;
   //this.keyon = false;
-  this.attack = attack || 0.0005;
-  this.decay = decay || 0.05;
-  this.sustain = sustain || 0.5;
-  this.release = release || 0.5;
+  this.attackTime = attack || 0.0005;
+  this.decayTime = decay || 0.05;
+  this.sustainLevel = sustain || 0.5;
+  this.releaseTime = release || 0.5;
   this.v = 1.0;
+  this.keyOnTime = 0;
+  this.keyOffTime = 0;
+  this.keyOn = false;
+  }
 
-};
-
-EnvelopeGenerator.prototype =
-{
-  keyon: function (t,vel) {
+  keyon(t,vel) {
     this.v = vel || 1.0;
     var v = this.v;
     var t0 = t || this.voice.audioctx.currentTime;
-    var t1 = t0 + this.attack * v;
+    var t1 = t0 + this.attackTime;
     var gain = this.voice.gain.gain;
     gain.cancelScheduledValues(t0);
-    gain.setValueAtTime(0, t0);
+    gain.setValueAtTime(0,t0);
     gain.linearRampToValueAtTime(v, t1);
-    gain.linearRampToValueAtTime(this.sustain * v, t0 + this.decay / v);
+    gain.linearRampToValueAtTime(this.sustainLevel * v, t1 + this.decayTime);
     //gain.setTargetAtTime(this.sustain * v, t1, t1 + this.decay / v);
-  },
-  keyoff: function (t) {
+    this.keyOnTime = t0;
+    this.keyOffTime = 0;
+    this.keyOn = true;
+  }
+  
+  keyoff(t) {
     var voice = this.voice;
     var gain = voice.gain.gain;
     var t0 = t || voice.audioctx.currentTime;
+//    gain.cancelScheduledValues(this.keyOnTime);
     gain.cancelScheduledValues(t0);
-    //gain.setValueAtTime(0, t0 + this.release / this.v);
-    //gain.setTargetAtTime(0, t0, t0 + this.release / this.v);
-    gain.linearRampToValueAtTime(0, t0 + this.release / this.v);
+    let release_time = t0 + this.releaseTime;
+    gain.linearRampToValueAtTime(0, release_time);
+    this.keyOffTime = t0;
+    this.keyOnTime = 0;
+    this.keyOn = false;
+    return release_time;
   }
 };
 
-/// ボイス
-export function Voice(audioctx) {
-  this.audioctx = audioctx;
-  this.sample = waveSamples[6];
-  this.gain = audioctx.createGain();
-  this.gain.gain.value = 0.0;
-  this.volume = audioctx.createGain();
-  this.envelope = new EnvelopeGenerator(this);
-  this.initProcessor();
-  this.detune = 1.0;
-  this.volume.gain.value = 1.0;
-  this.gain.connect(this.volume);
-  this.output = this.volume;
-};
+export class Voice {
+  constructor(audioctx) {
+    this.audioctx = audioctx;
+    this.sample = waveSamples[6];
+    this.volume = audioctx.createGain();
+    this.envelope = new EnvelopeGenerator(this,
+      0.5,
+      0.25,
+      0.8,
+      2.5
+    );
+    this.initProcessor();
+    this.detune = 1.0;
+    this.volume.gain.value = 1.0;
+    this.output = this.volume;
+  }
 
-Voice.prototype = {
-  initProcessor: function () {
-    this.processor = this.audioctx.createBufferSource();
+  initProcessor() {
+    // if(this.processor){
+    //   this.stop();
+    //   this.processor.disconnect();
+    //   this.processor = null;
+    // }
+    let processor = this.processor = this.audioctx.createBufferSource();
+    let gain = this.gain = this.audioctx.createGain();
+    gain.gain.value = 0.0;
+
     this.processor.buffer = this.sample.sample;
     this.processor.loop = this.sample.loop;
     this.processor.loopStart = 0;
     this.processor.playbackRate.value = 1.0;
     this.processor.loopEnd = this.sample.end;
     this.processor.connect(this.gain);
-  },
+    this.processor.onended = () => {
+      processor.disconnect();
+      gain.disconnect();
+      };    
+    gain.connect(this.volume);
+  }
 
-  setSample: function (sample) {
-      this.envelope.keyoff(0);
-      this.processor.disconnect(this.gain);
-      this.sample = sample;
-      this.initProcessor();
-      this.processor.start();
-  },
-  start: function (startTime) {
- //   if (this.processor.playbackState == 3) {
-      this.processor.disconnect(this.gain);
-      this.initProcessor();
-//    } else {
-//      this.envelope.keyoff();
-//
-//    }
+  // setSample (sample) {
+  //     this.envelope.keyoff(0);
+  //     this.processor.disconnect(this.gain);
+  //     this.sample = sample;
+  //     this.initProcessor();
+  //     this.processor.start();
+  // }
+  
+  start(startTime) {
+ //   this.processor.disconnect(this.gain);
+    this.initProcessor();
     this.processor.start(startTime);
-  },
-  stop: function (time) {
+  }
+  
+  stop(time) {
     this.processor.stop(time);
-    this.reset();
-  },
-  keyon:function(t,note,vel)
+    //this.reset();
+  }
+  
+  keyon(t,note,vel)
   {
+    this.start(t);
     this.processor.playbackRate.setValueAtTime(noteFreq[note] * this.detune, t);
+    this.keyOnTime = t;
     this.envelope.keyon(t,vel);
-  },
-  keyoff:function(t)
+  }
+  
+  keyoff(t)
   {
-    this.envelope.keyoff(t);
-  },
-  reset:function()
+    this.gain.gain.cancelScheduledValues(t/*this.keyOnTime*/);
+    this.keyOffTime = this.envelope.keyoff(t);
+    this.processor.stop(this.keyOffTime);
+  }
+  
+  isKeyOn(t){
+     return this.envelope.keyOn && (this.keyOnTime <= t);    
+  }
+
+  isKeyOff(t){
+     return !this.envelope.keyOn && (this.keyOffTime <= t);    
+  }
+  
+  reset()
   {
     this.processor.playbackRate.cancelScheduledValues(0);
     this.gain.gain.cancelScheduledValues(0);
@@ -231,7 +316,80 @@ Voice.prototype = {
   }
 }
 
-export function Audio() {
+/// ボイス
+export class OscVoice {
+  constructor(audioctx,periodicWave) {
+    this.audioctx = audioctx;
+    this.sample = periodicWave;
+    this.volume = audioctx.createGain();
+    this.envelope = new EnvelopeGenerator(this,
+      0.5,
+      0.25,
+      0.8,
+      2.5
+    );
+    this.initProcessor();
+    this.detune = 1.0;
+    this.volume.gain.value = 1.0;
+    this.output = this.volume;
+  }
+
+  initProcessor() {
+    let processor = this.processor = this.audioctx.createOscillator();
+    let gain = this.gain = this.audioctx.createGain();
+    this.gain.gain.value = 0.0;
+    this.processor.setPeriodicWave(this.sample);
+    this.processor.connect(this.gain);
+    this.processor.onended = () => {
+          processor.disconnect();
+          gain.disconnect();
+    };    
+    this.gain.connect(this.volume);
+   }
+
+  start(startTime) {
+    this.initProcessor();
+    this.processor.start(startTime);
+  }
+  
+  stop(time) {
+    this.processor.stop(time);
+  }
+  
+  keyon(t,note,vel)
+  {
+    this.start(t);
+    this.processor.frequency.setValueAtTime(midiFreq[note] * this.detune, t);
+    this.keyOnTime = t;
+    this.envelope.keyon(t,vel);
+  }
+  
+  keyoff(t)
+  {
+    this.gain.gain.cancelScheduledValues(t/*this.keyOnTime*/);
+    this.keyOffTime = this.envelope.keyoff(t);
+    this.processor.stop(this.keyOffTime);
+  }
+  
+  isKeyOn(t){
+     return this.envelope.keyOn && (this.keyOnTime <= t);    
+  }
+
+  isKeyOff(t){
+     return !this.envelope.keyOn && (this.keyOffTime <= t);    
+  }
+  
+  reset()
+  {
+    this.processor.playbackRate.cancelScheduledValues(0);
+    this.gain.gain.cancelScheduledValues(0);
+    this.gain.gain.value = 0;
+  }
+}
+
+export class Audio {
+ constructor() {
+  this.VOICES = 16;
   this.enable = false;
   this.audioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
 
@@ -243,6 +401,7 @@ export function Audio() {
   this.voices = [];
   if (this.enable) {
     createWaveSampleFromWaves(this.audioctx, BUFFER_SIZE);
+    this.periodicWaves = createPeriodicWaveFromWaves(this.audioctx);
     this.filter = this.audioctx.createBiquadFilter();
     this.filter.type = 'lowpass';
     this.filter.frequency.value = 20000;
@@ -255,7 +414,10 @@ export function Audio() {
     this.filter.connect(this.comp);
     this.noiseFilter.connect(this.comp);
     this.comp.connect(this.audioctx.destination);
+    // this.filter.connect(this.audioctx.destination);
+    // this.noiseFilter.connect(this.audioctx.destination);
     for (var i = 0,end = this.VOICES; i < end; ++i) {
+      //var v = new OscVoice(this.audioctx,this.periodicWaves[0]);
       var v = new Voice(this.audioctx);
       this.voices.push(v);
       if(i == (this.VOICES - 1)){
@@ -264,26 +426,21 @@ export function Audio() {
         v.output.connect(this.filter);
       }
     }
-//  this.started = false;
-
+    //  this.started = false;
     //this.voices[0].output.connect();
   }
+ }
 
-}
-
-Audio.prototype = {
-  start: function ()
+  start()
   {
-  //  if (this.started) return;
-
-    var voices = this.voices;
-    for (var i = 0, end = voices.length; i < end; ++i)
-    {
-      voices[i].start(0);
-    }
-    //this.started = true;
-  },
-  stop: function ()
+    // var voices = this.voices;
+    // for (var i = 0, end = voices.length; i < end; ++i)
+    // {
+    //   voices[i].start(0);
+    // }
+  }
+  
+  stop()
   {
     //if(this.started)
     //{
@@ -294,84 +451,75 @@ Audio.prototype = {
       }
     //  this.started = false;
     //}
-  },
-  VOICES: 12
+  }
 }
+
+
 
 /**********************************************/
 /* シーケンサーコマンド                       */
 /**********************************************/
 
-export function Note(no, length) {
-  this.no = no;
+function calcStep(noteLength) {
+  // 長さからステップを計算する
+  let prev = null;
+  let dotted = 0;
+
+  let map = noteLength.map((elem) => {
+    switch (elem) {
+      case null:
+        elem = prev;
+        break;
+      case 0:
+        elem = (dotted *= 2);
+        break;
+      default:
+        prev = dotted = elem;
+        break;
+    }
+
+    let length = elem !== null ? elem : DefaultParams.length;
+
+    return TIME_BASE * (4 / length);
+  });
+  return map.reduce((a, b) => a + b, 0);
+}
+
+export class Note {
+  constructor(notes, length) {
+
+    this.notes = notes;
+    if (length[0]) {
+      this.step = calcStep(length);
+    }
+  }
   
-  if(length){
-    // 長さからステップを計算する
-    
-  }
-}
-
-Note.prototype = {
-  process: function(track) 
+  process(track) 
   {
-    var back = track.back;
-    var note = this;
-    var oct = this.oct || back.oct;
-    var step = this.step || back.step;
-    var gate = this.gate || back.gate;
-    var vel = this.vel || back.vel;
-    setQueue(track, note, oct,step, gate, vel);
-
+    this.notes.forEach((n,i)=>{
+      var back = track.back;
+      var note = n;
+      var oct = this.oct || back.oct;
+      var step = this.step || back.step;
+      var gate = this.gate || back.gate;
+      var vel = this.vel || back.vel;
+      setQueue(track, note, oct,i==0?step:0, gate, vel);
+    });
   }
 }
 
-// var 
-//   C  = new Note( 0,'C '),
-//   Db = new Note( 1,'Db'),
-//   D  = new Note( 2,'D '),
-//   Eb = new Note( 3,'Eb'),
-//   E  = new Note( 4,'E '),
-//   F  = new Note( 5,'F '),
-//   Gb = new Note( 6,'Gb'),
-//   G  = new Note( 7,'G '),
-//   Ab = new Note( 8,'Ab'),
-//   A  = new Note( 9,'A '),
-//   Bb = new Note(10,'Bb'),
-//   B = new Note(11, 'B ');
+class SeqData {
+  constructor(note, oct, step, gate, vel) {
+    this.note = note;
+    this.oct = oct;
+    //this.no = note.no + oct * 12;
+    this.step = step;
+    this.gate = gate;
+    this.vel = vel;
+    this.sample = wave
+  }
 
- // R = new Rest();
-
-function SeqData(note, oct, step, gate, vel)
-{
-  this.note = note;
-  this.oct = oct;
-  //this.no = note.no + oct * 12;
-  this.step = step;
-  this.gate = gate;
-  this.vel = vel;
-}
-
-function setQueue(track,note,oct,step,gate,vel)
-{
-  var no = note.no + oct * 12;
-  var step_time = track.playingTime;
-  var gate_time = ((gate >= 0) ? gate * 60 : step * gate * 60 * -1.0) / (TIME_BASE * track.localTempo) + track.playingTime;
-  var voice = track.audio.voices[track.channel];
-  //console.log(track.sequencer.tempo);
-  voice.keyon(step_time, no, vel);
-  voice.keyoff(gate_time);
-  track.playingTime = (step * 60) / (TIME_BASE * track.localTempo) + track.playingTime;
-  var back = track.back;
-  back.note = note;
-  back.oct = oct;
-  back.step = step;
-  back.gate = gate;
-  back.vel = vel;
-}
-
-SeqData.prototype = {
-  process: function (track) {
-
+  process(track) {
     var back = track.back;
     var note = this.note || back.note;
     var oct = this.oct || back.oct;
@@ -381,6 +529,44 @@ SeqData.prototype = {
     setQueue(track,note,oct,step,gate,vel);
   }
 }
+
+function setQueue(track,note,oct,step,gate,vel)
+{
+  let no = note + oct * 12;
+  let back = track.back;
+  var step_time = (step?track.playingTime:back.playingTime);
+  // var gate_time = ((gate >= 0) ? gate * 60 : step * gate * 60 * -1.0) / (TIME_BASE * track.localTempo) + track.playingTime;
+
+  var gate_time = ((step==0?back.codeStep:step) * gate * 60) / (TIME_BASE * track.localTempo) + (step?track.playingTime:back.playingTime);
+  //let voice = track.audio.voices[track.channel];
+  let voice = track.assignVoice(step_time);
+  //voice.reset();
+  voice.sample = back.sample;
+  voice.envelope.attackTime = back.attack;
+  voice.envelope.decayTime = back.decay;
+  voice.envelope.sustainLevel = back.sustain;
+  voice.envelope.releaseTime = back.release;
+  voice.detune = back.detune;
+  voice.volume.gain.setValueAtTime(back.volume, step_time);
+
+  //voice.initProcessor();
+  
+  //console.log(track.sequencer.tempo);
+  voice.keyon(step_time, no, vel);
+  voice.keyoff(gate_time);
+ if(step){
+  back.codeStep = step;
+  back.playingTime = track.playingTime;
+ }
+
+  track.playingTime = (step * 60) / (TIME_BASE * track.localTempo) + track.playingTime;
+ // back.voice = voice;
+ // back.note = note;
+ // back.oct = oct;
+ // back.gate = gate;
+ // back.vel = vel;
+}
+
 
 function S(note, oct, step, gate, vel) {
   var args = Array.prototype.slice.call(arguments);
@@ -417,283 +603,251 @@ function S3(note, step, gate, vel, oct) {
 
 /// 音符の長さ指定
 
-function l(len,dot)
-{
-  var d = false;
-  if (dot) d = dot;
-  return (TIME_BASE * (4 + (d?2:0))) / len;
+class Length {
+  constructor(len) {
+    this.step = calcStep(len);
+  }
+  process(track) {
+    track.back.step = this.step;
+  }
 }
 
-function Step(step) {
-  this.step = step;
-}
-
-Step.prototype.process = function (track)
-{
-  track.back.step = this.step;
-}
-
-function ST(step)
-{
-  return new Step(step);
-}
-
-function L(len, dot) {
-  return new Step(l(len, dot));
+class Step {
+  constructor(step) {
+    this.step = step;
+  }
+  process(track) {
+    track.back.step = this.step;
+  }
 }
 
 /// ゲートタイム指定
 
-function GateTime(gate) {
-  this.gate = gate;
-}
+class GateTime{
+  constructor(gate) {
+    this.gate = gate / 100;
+  }
 
-GateTime.prototype.process = function (track) {
-  track.back.gate = this.gate;
-}
-
-function GT(gate) {
-  return new GateTime(gate);
+  process(track) {
+    track.back.gate = this.gate;
+  }
 }
 
 /// ベロシティ指定
 
-function Velocity(vel) {
-  this.vel = vel;
-}
-
-Velocity.prototype.process = function (track) {
-  track.back.vel = this.vel;
-}
-
-function V(vel) {
-  return new Velocity(vel);
-}
-
-
-function Jump(pos) { this.pos = pos;};
-Jump.prototype.process = function (track)
-{
-  track.seqPos = this.pos;
+class Velocity {
+  constructor(vel) {
+    this.vel = vel / 100;
+  }
+  process(track) {
+    track.back.vel = this.vel;
+  }
 }
 
 /// 音色設定
-function Tone(no)
-{
-  this.no = no;
-  //this.sample = waveSamples[this.no];
-}
+class Tone{ 
+  constructor(no) {
+    this.no = no;
+    //this.sample = waveSamples[this.no];
+  }
 
-Tone.prototype =
-{
-  process: function (track)
-  {
-    track.audio.voices[track.channel].setSample(waveSamples[this.no]);
+  process(track) {
+//    track.back.sample = track.audio.periodicWaves[this.no];
+    track.back.sample = waveSamples[this.no];
+//    track.audio.voices[track.channel].setSample(waveSamples[this.no]);
   }
 }
-function TONE(no)
-{
-  return new Tone(no);
+
+class Rest {
+  constructor(length) {
+    this.step = calcStep(length);
+  }
+  process(track) {
+    var step = this.step || track.back.step;
+    track.playingTime = track.playingTime + (this.step * 60) / (TIME_BASE * track.localTempo);
+    //track.back.step = this.step;
+  }
 }
 
-function JUMP(pos) {
-  return new Jump(pos);
+class Octave {
+  constructor(oct) {
+    this.oct = oct;
+  }
+  process(track) {
+    track.back.oct = this.oct;
+  }
 }
 
-function Rest(step)
-{
-  this.step = step;
+
+class OctaveUp{
+  constructor(v) { this.v = v; }
+  process(track) {
+    track.back.oct += this.v;
+  }
 }
 
-Rest.prototype.process = function(track)
-{
-  var step = this.step || track.back.step;
-  track.playingTime = track.playingTime + (this.step * 60) / (TIME_BASE * track.localTempo);
-  track.back.step = this.step;
+class OctaveDown{
+  constructor(v) { this.v = v; }
+  process(track) {
+    track.back.oct -= this.v;
+  }
+}
+class Tempo {
+  constructor(tempo) {
+    this.tempo = tempo;
+  }
+
+  process(track) {
+    track.localTempo = this.tempo;
+    //track.sequencer.tempo = this.tempo;
+  }
 }
 
-function R1(step) {
-  return new Rest(step);
-}
-function R(len,dot) {
-  return new Rest(l(len,dot));
-}
+class Envelope{
+  constructor(attack, decay, sustain, release)
+  {
+    this.attack = attack;
+    this.decay = decay;
+    this.sustain = sustain;
+    this.release = release;
+  }
 
-function Octave(oct) {
-  this.oct = oct;
-}
-Octave.prototype.process = function(track)
-{
-  track.back.oct = this.oct;
-}
-
-function O(oct) {
-  return new Octave(oct);
-}
-
-function OctaveUp(v) { this.v = v; };
-OctaveUp.prototype.process = function(track) {
-  track.back.oct += this.v;
-}
-
-var OU = new OctaveUp(1);
-var OD = new OctaveUp(-1);
-
-function Tempo(tempo)
-{
-  this.tempo = tempo;
-}
-
-Tempo.prototype.process = function(track)
-{
-  track.localTempo = this.tempo;
-  //track.sequencer.tempo = this.tempo;
-}
-
-function TEMPO(tempo)
-{
-  return new Tempo(tempo);
-}
-
-function Envelope(attack, decay, sustain, release)
-{
-  this.attack = attack;
-  this.decay = decay;
-  this.sustain = sustain;
-  this.release = release;
-}
-
-Envelope.prototype.process = function(track)
-{
-  var envelope = track.audio.voices[track.channel].envelope;
-  envelope.attack = this.attack;
-  envelope.decay = this.decay;
-  envelope.sustain = this.sustain;
-  envelope.release = this.release;
-}
-
-function ENV(attack,decay,sustain ,release)
-{
-  return new Envelope(attack, decay, sustain, release);
+  process(track)
+  {
+    //var envelope = track.audio.voices[track.channel].envelope;
+    track.back.attack = this.attack;
+    track.back.decay = this.decay;
+    track.back.sustain = this.sustain;
+    track.back.release = this.release;
+  }
 }
 
 /// デチューン
-function Detune(detune)
-{
-  this.detune = detune;
-}
+class Detune {
+  constructor(detune) {
+    this.detune = detune;
+  }
 
-Detune.prototype.process = function(track)
-{
-  var voice = track.audio.voices[track.channel];
-  voice.detune = this.detune;
-}
-
-function DETUNE(detune)
-{
-  return new Detune(detune);
-}
-
-function Volume(volume)
-{
-  this.volume = volume;
-}
-
-Volume.prototype.process = function(track)
-{
-  track.audio.voices[track.channel].volume.gain.setValueAtTime(this.volume, track.playingTime);
-}
-
-function VOLUME(volume)
-{
-  return new Volume(volume);
-}
-
-function LoopData(obj,varname, count,seqPos)
-{
-  this.varname = varname;
-  this.count = count;
-  this.obj = obj;
-  this.seqPos = seqPos;
-}
-
-function Loop(varname, count) {
-  this.loopData = new LoopData(this,varname,count,0);
-}
-
-Loop.prototype.process = function (track)
-{
-  var stack = track.stack;
-  if (stack.length == 0 || stack[stack.length - 1].obj !== this)
-  {
-    var ld = this.loopData;
-    stack.push(new LoopData(this, ld.varname, ld.count, track.seqPos));
-  } 
-}
-
-function LOOP(varname, count) {
-  return new Loop(varname,count);
-}
-
-function LoopEnd()
-{
-}
-
-LoopEnd.prototype.process = function(track)
-{
-  var ld = track.stack[track.stack.length - 1];
-  ld.count--;
-  if (ld.count > 0) {
-    track.seqPos = ld.seqPos;
-  } else {
-    track.stack.pop();
+  process(track) {
+    //var voice = track.audio.voices[track.channel];
+    track.back.detune = this.detune;
   }
 }
 
-var LOOP_END = new LoopEnd();
+class Volume{
+  constructor(volume) {
+    this.volume = volume / 100.0;
+  }
+
+  process(track) {
+    // 
+    track.back.volume = this.volume;
+    // track.audio.voices[track.channel].volume.gain.setValueAtTime(this.volume, track.playingTime);
+  }
+}
+
+class LoopData {
+  constructor(obj, varname, count, seqPos) {
+    this.varname = varname;
+    this.count = count || DefaultParams.loopCount;
+    this.obj = obj;
+    this.seqPos = seqPos;
+    this.outSeqPos = -1;
+  }
+
+  process(track) {
+    var stack = track.stack;
+    if (stack.length == 0 || stack[stack.length - 1].obj !== this) {
+      var ld = this;
+      stack.push(new LoopData(this, ld.varname, ld.count, track.seqPos));
+    }
+  }
+}
+
+class LoopEnd
+{
+  constructor(seqPos){
+    this.seqPos = seqPos;
+  }
+  process(track) {
+    var ld = track.stack[track.stack.length - 1];
+    if(ld.outSeqPos == -1) ld.outSeqPos = this.seqPos;
+    ld.count--;
+    if (ld.count > 0) {
+      track.seqPos = ld.seqPos;
+    } else {
+      track.stack.pop();
+    }
+  }
+}
+
+class LoopExit {
+  process(track){
+    var ld = track.stack[track.stack.length - 1];
+    if(ld.count <= 1 && ld.outSeqPos != -1){
+      track.seqPos = ld.outSeqPos;
+      track.stack.pop();
+    }
+  }
+}
+
+class InfiniteLoop{
+  process(track){
+    track.infinitLoopIndex = track.seqPos;
+  }
+}
 
 /// シーケンサートラック
-function Track(sequencer,seqdata,audio)
-{
-  this.name = '';
-  this.end = false;
-  this.oneshot = false;
-  this.sequencer = sequencer;
-  this.seqData = seqdata;
-  this.seqPos = 0;
-  this.mute = false;
-  this.playingTime = -1;
-  this.localTempo = sequencer.tempo;
-  this.trackVolume = 1.0;
-  this.transpose = 0;
-  this.solo = false;
-  this.channel = -1;
-  this.track = -1;
-  this.audio = audio;
-  this.back = {
-    note: 72,
-    oct: 5,
-    step: 96,
-    gate: 48,
-    vel:1.0
+class Track {
+  constructor(sequencer, seqdata, audio) {
+    this.name = '';
+    this.end = false;
+    this.oneshot = false;
+    this.sequencer = sequencer;
+    this.seqData = seqdata;
+    this.seqPos = 0;
+    this.mute = false;
+    this.playingTime = -1;
+    this.localTempo = sequencer.tempo;
+    this.trackVolume = 1.0;
+    this.transpose = 0;
+    this.solo = false;
+    this.channel = -1;
+    this.track = -1;
+    this.audio = audio;
+    this.infinitLoopIndex = -1;
+    this.back = {
+      note: 72,
+      oct: 5,
+      step: 96,
+      gate: 0.5,
+      vel: 1.0,
+      attack:0.01,
+      decay:0.05,
+      sustain:0.6,
+      release:0.07,
+      detune:1.0,
+      volume:0.5,
+//      sample:audio.periodicWaves[0]
+      sample:waveSamples[0]
+    }
+    this.stack = [];
   }
-  this.stack = [];
-}
 
-Track.prototype = {
-  process: function (currentTime) {
+  process(currentTime) {
 
     if (this.end) return;
-    
+
     if (this.oneshot) {
       this.reset();
     }
 
     var seqSize = this.seqData.length;
     if (this.seqPos >= seqSize) {
-      if(this.sequencer.repeat)
-      {
+      if (this.sequencer.repeat) {
         this.seqPos = 0;
+      } else if(this.infinitLoopIndex >= 0){
+        this.seqPos = this.infinitLoopIndex;
       } else {
         this.end = true;
         return;
@@ -713,9 +867,9 @@ Track.prototype = {
         this.seqPos++;
       }
     }
-  },
-  reset:function()
-  {
+  }
+
+  reset() {
     var curVoice = this.audio.voices[this.channel];
     curVoice.gain.gain.cancelScheduledValues(0);
     curVoice.processor.playbackRate.cancelScheduledValues(0);
@@ -723,6 +877,24 @@ Track.prototype = {
     this.playingTime = -1;
     this.seqPos = 0;
     this.end = false;
+  }
+  
+  assignVoice(t){
+    let ret = null;
+    this.audio.voices.some((d,i)=>{
+      if(d.isKeyOff(t)){
+        ret = d;
+        return true;
+      }
+      return false;
+    });
+    if(!ret){
+      let oldestKeyOnData = (this.audio.voices.map((d,i)=>{
+        return {time:d.envelope.keyOnTime,d,i};        
+      }).sort((a,b)=> a.time - b.time ))[0];
+      ret = oldestKeyOnData.d;
+    }
+    return ret;
   }
 
 }
@@ -746,52 +918,51 @@ function createTracks(trackdata)
 }
 
 /// シーケンサー本体
-export function Sequencer(audio) {
-  this.audio = audio;
-  this.tempo = 100.0;
-  this.repeat = false;
-  this.play = false;
-  this.tracks = [];
-  this.pauseTime = 0;
-  this.status = this.STOP;
-}
+export class Sequencer {
+  constructor(audio) {
+    this.STOP = 0 | 0;
+    this.PLAY = 1 | 0;
+    this.PAUSE = 2 | 0;
 
-Sequencer.prototype = {
-  load: function(data)
-  {
-    if(this.play) {
+    this.audio = audio;
+    this.tempo = 100.0;
+    this.repeat = false;
+    this.play = false;
+    this.tracks = [];
+    this.pauseTime = 0;
+    this.status = this.STOP;
+  }
+  load(data) {
+    parseMML(data);
+    if (this.play) {
       this.stop();
     }
     this.tracks.length = 0;
-    loadTracks(this,this.tracks, data.tracks,this.audio);
-  },
-  start:function()
-  {
+    loadTracks(this, this.tracks, data.tracks, this.audio);
+  }
+  start() {
     //    this.handle = window.setTimeout(function () { self.process() }, 50);
     this.status = this.PLAY;
     this.process();
-  },
-  process:function()
-  {
+  }
+  process() {
     if (this.status == this.PLAY) {
       this.playTracks(this.tracks);
       this.handle = window.setTimeout(this.process.bind(this), 100);
     }
-  },
-  playTracks: function (tracks){
+  }
+  playTracks(tracks) {
     var currentTime = this.audio.audioctx.currentTime;
- //   console.log(this.audio.audioctx.currentTime);
+    //   console.log(this.audio.audioctx.currentTime);
     for (var i = 0, end = tracks.length; i < end; ++i) {
       tracks[i].process(currentTime);
     }
-  },
-  pause:function()
-  {
+  }
+  pause() {
     this.status = this.PAUSE;
     this.pauseTime = this.audio.audioctx.currentTime;
-  },
-  resume:function ()
-  {
+  }
+  resume() {
     if (this.status == this.PAUSE) {
       this.status = this.PLAY;
       var tracks = this.tracks;
@@ -801,92 +972,86 @@ Sequencer.prototype = {
       }
       this.process();
     }
-  },
-  stop: function ()
-  {
+  }
+  stop() {
     if (this.status != this.STOP) {
       clearTimeout(this.handle);
       //    clearInterval(this.handle);
       this.status = this.STOP;
       this.reset();
     }
-  },
-  reset:function()
-  {
-    for (var i = 0, end = this.tracks.length; i < end; ++i)
-    {
+  }
+  reset() {
+    for (var i = 0, end = this.tracks.length; i < end; ++i) {
       this.tracks[i].reset();
-    }
-  },
-  STOP: 0 | 0,
-  PLAY: 1 | 0,
-  PAUSE:2 | 0
-}
-
-/// 簡易鍵盤の実装
-function Piano(audio) {
-  this.audio = audio;
-  this.table = [90, 83, 88, 68, 67, 86, 71, 66, 72, 78, 74, 77, 188];
-  this.keyon = new Array(13);
-}
-
-Piano.prototype = {
-  on: function (e) {
-    var index = this.table.indexOf(e.keyCode, 0);
-    if (index == -1) {
-      if (e.keyCode > 48 && e.keyCode < 57) {
-        var timbre = e.keyCode - 49;
-        this.audio.voices[7].setSample(waveSamples[timbre]);
-        waveGraph.wave = waves[timbre];
-        waveGraph.render();
-        textPlane.print(5, 10, "Wave " + (timbre + 1));
-      }
-      return true;
-    } else {
-      //audio.voices[0].processor.playbackRate.value = sequencer.noteFreq[];
-      if (!this.keyon[index]) {
-        this.audio.voices[7].keyon(0,index + (e.shiftKey ? 84 : 72),1.0);
-        this.keyon[index] = true;
-      }
-      return false;
-    }
-
-  },
-  off: function (e) {
-    var index = this.table.indexOf(e.keyCode, 0);
-    if (index == -1) {
-      return true;
-    } else {
-      if (this.keyon[index]) {
-        audio.voices[7].envelope.keyoff(0);
-        this.keyon[index] = false;
-      }
-      return false;
     }
   }
 }
 
-function createSeqArray(mml)
+function parseMML(data){
+  data.tracks.forEach((d)=>{
+    d.data = parseMML_(d.mml);
+  });
+}
+
+function parseMML_(mml)
 {
   let parser = new MMLParser(mml);
   let commands = parser.parse();
   let seqArray = [];  
-  commands.forEach((element)=>{
-    switch(elment.type){
+  commands.forEach((command)=>{
+    switch(command.type){
       case Syntax.Note:
-      seqArray.push(new Note(element.noteNumbers[0],element.noteLength));
-      break;
+        seqArray.push(new Note(command.noteNumbers,command.noteLength));
+        break;
+      case Syntax.Rest:
+        seqArray.push(new Rest(command.noteLength));
+        break;
+      case Syntax.Octave:
+        seqArray.push(new Octave(command.value));
+        break;
+      case Syntax.OctaveShift:
+        if(command.direction >=0){
+          seqArray.push(new OctaveUp(1));
+        } else {
+          seqArray.push(new OctaveDown(1));
+        }
+        break;
+      case Syntax.NoteLength:
+        seqArray.push(new Length(command.noteLength));
+        break;
+      case Syntax.NoteVelocity:
+        seqArray.push(new Velocity(command.value));
+        break;
+      case Syntax.Tempo:
+        seqArray.push(new Tempo(command.value));
+        break;
+      case Syntax.NoteQuantize:
+        seqArray.push(new GateTime(command.value));
+        break;
+      case Syntax.InfiniteLoop:
+        seqArray.push(new InfiniteLoop());
+        break;
+      case Syntax.LoopBegin:
+        seqArray.push(new LoopData(null,'',command.value,null));
+        break;
+      case Syntax.LoopExit:
+        seqArray.push(new LoopExit());
+        break;
+      case Syntax.LoopEnd:
+        seqArray.push( new LoopEnd());
+        break;
+      case Syntax.Tone:
+        seqArray.push(new Tone(command.value));
+      case Syntax.WaveForm:
+        break;
+      case Syntax.Envelope:
+        seqArray.push(new Envelope(command.a,command.d,command.s,command.r));
+        break;
     }
   });
+  return seqArray;
 }
-
-data = `
-        S0.01,0.02,0.5,0.07
-        T180@0V0.5L8Q-0.5O4
-        /:CCCCCCCC:/4
-        $
-`;
-
 
 // export var seqData = {
 //   name: 'Test',
@@ -936,76 +1101,76 @@ data = `
 //   ]
 // }
 
-export function SoundEffects(sequencer) {
-   this.soundEffects =
-    [
-    // Effect 0 ////////////////////////////////////
-    createTracks.call(sequencer,[
-    {
-      channel: 8,
-      oneshot:true,
-      data: [VOLUME(0.5),
-        ENV(0.0001, 0.01, 1.0, 0.0001),GT(-0.999),TONE(0), TEMPO(200), O(8),ST(3), C, D, E, F, G, A, B, OU, C, D, E, G, A, B,B,B,B
-      ]
-    },
-    {
-      channel: 9,
-      oneshot: true,
-      data: [VOLUME(0.5),
-        ENV(0.0001, 0.01, 1.0, 0.0001), DETUNE(0.9), GT(-0.999), TONE(0), TEMPO(200), O(5), ST(3), C, D, E, F, G, A, B, OU, C, D, E, G, A, B,B,B,B
-      ]
-    }
-    ]),
-    // Effect 1 /////////////////////////////////////
-    createTracks.call(sequencer,
-      [
-        {
-          channel: 10,
-          oneshot: true,
-          data: [
-           TONE(4), TEMPO(150), ST(4), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
-           O(6), G, A, B, O(7), B, A, G, F, E, D, C, E, G, A, B, OD, B, A, G, F, E, D, C, OD, B, A, G, F, E, D, C
-          ]
-        }
-      ]),
-    // Effect 2//////////////////////////////////////
-    createTracks.call(sequencer,
-      [
-        {
-          channel: 10,
-          oneshot: true,
-          data: [
-           TONE(0), TEMPO(150), ST(2), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
-           O(8), C,D,E,F,G,A,B,OU,C,D,E,F,OD,G,OU,A,OD,B,OU,A,OD,G,OU,F,OD,E,OU,E
-          ]
-        }
-      ]),
-      // Effect 3 ////////////////////////////////////
-      createTracks.call(sequencer,
-        [
-          {
-            channel: 10,
-            oneshot: true,
-            data: [
-             TONE(5), TEMPO(150), L(64), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
-             O(6),C,OD,C,OU,C,OD,C,OU,C,OD,C,OU,C,OD
-            ]
-          }
-        ]),
-      // Effect 4 ////////////////////////////////////////
-      createTracks.call(sequencer,
-        [
-          {
-            channel: 11,
-            oneshot: true,
-            data: [
-             TONE(8), VOLUME(2.0),TEMPO(120), L(2), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.25),
-             O(1), C
-            ]
-          }
-        ])
-   ];
- }
+// export function SoundEffects(sequencer) {
+//    this.soundEffects =
+//     [
+//     // Effect 0 ////////////////////////////////////
+//     createTracks.call(sequencer,[
+//     {
+//       channel: 8,
+//       oneshot:true,
+//       data: [VOLUME(0.5),
+//         ENV(0.0001, 0.01, 1.0, 0.0001),GT(-0.999),TONE(0), TEMPO(200), O(8),ST(3), C, D, E, F, G, A, B, OU, C, D, E, G, A, B,B,B,B
+//       ]
+//     },
+//     {
+//       channel: 9,
+//       oneshot: true,
+//       data: [VOLUME(0.5),
+//         ENV(0.0001, 0.01, 1.0, 0.0001), DETUNE(0.9), GT(-0.999), TONE(0), TEMPO(200), O(5), ST(3), C, D, E, F, G, A, B, OU, C, D, E, G, A, B,B,B,B
+//       ]
+//     }
+//     ]),
+//     // Effect 1 /////////////////////////////////////
+//     createTracks.call(sequencer,
+//       [
+//         {
+//           channel: 10,
+//           oneshot: true,
+//           data: [
+//            TONE(4), TEMPO(150), ST(4), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
+//            O(6), G, A, B, O(7), B, A, G, F, E, D, C, E, G, A, B, OD, B, A, G, F, E, D, C, OD, B, A, G, F, E, D, C
+//           ]
+//         }
+//       ]),
+//     // Effect 2//////////////////////////////////////
+//     createTracks.call(sequencer,
+//       [
+//         {
+//           channel: 10,
+//           oneshot: true,
+//           data: [
+//            TONE(0), TEMPO(150), ST(2), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
+//            O(8), C,D,E,F,G,A,B,OU,C,D,E,F,OD,G,OU,A,OD,B,OU,A,OD,G,OU,F,OD,E,OU,E
+//           ]
+//         }
+//       ]),
+//       // Effect 3 ////////////////////////////////////
+//       createTracks.call(sequencer,
+//         [
+//           {
+//             channel: 10,
+//             oneshot: true,
+//             data: [
+//              TONE(5), TEMPO(150), L(64), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.0001),
+//              O(6),C,OD,C,OU,C,OD,C,OU,C,OD,C,OU,C,OD
+//             ]
+//           }
+//         ]),
+//       // Effect 4 ////////////////////////////////////////
+//       createTracks.call(sequencer,
+//         [
+//           {
+//             channel: 11,
+//             oneshot: true,
+//             data: [
+//              TONE(8), VOLUME(2.0),TEMPO(120), L(2), GT(-0.9999), ENV(0.0001, 0.0001, 1.0, 0.25),
+//              O(1), C
+//             ]
+//           }
+//         ])
+//    ];
+//  }
 
 
 

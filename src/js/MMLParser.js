@@ -54,6 +54,8 @@ export default class MMLParser {
       return this.readTone();
     case "w":
       return this.readWaveForm();
+    case "s":
+      return this.readEnvelope();
     default:
       // do nothing
     }
@@ -224,16 +226,16 @@ export default class MMLParser {
   
   readEnvelope(){
     this.scanner.expect("s");
-    let a = this._readArgument(/[0-9\.]+/);
+    let a = this._readArgument(/\d+(\.\d+)?/);
     this.scanner.expect(",");
-    let d = this._readArgument(/[0-9\.]+/);
+    let d = this._readArgument(/\d+(\.\d+)?/);
     this.scanner.expect(",");
-    let s = this._readArgument(/[0-9\.]+/);
+    let s = this._readArgument(/\d+(\.\d+)?/);
     this.scanner.expect(",");
-    let r = this._readArgument(/[0-9\.]+/);
+    let r = this._readArgument(/\d+(\.\d+)?/);
     return {
       type:Syntax.Envelope,
-      value:{a:a,d:d,s:s,r:r}
+      a:a,d:d,s:s,r:r
     }
   }
 

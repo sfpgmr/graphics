@@ -2,6 +2,8 @@
 import "babel-polyfill";
 import {fontData} from "./mz700fon";
 import {charCodes,canaCodes} from "./charCodes";
+import * as audio from "./audio";
+import {seqData} from './seqData';
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -703,24 +705,44 @@ window.addEventListener('load',()=>{
     })();  
     main = gen.next.bind(gen);
   }
+  let audio_ = new audio.Audio();
+  let sequencer = new audio.Sequencer(audio_);
+  sequencer.load(seqData);
 
   runBtn.addEventListener('click',()=>{
     updateStatus(STATUS.run);
+    sequencer.start();
     run();
   });
   
   pauseBtn.addEventListener('click',()=>{
     if(status == STATUS.pause){
       updateStatus(STATUS.run);
+      sequencer.resume();
     } else {
+      sequencer.pause();
       updateStatus(STATUS.pause);
     }
   });
 
   stopBtn.addEventListener('click',()=>{
+    sequencer.stop();
     updateStatus(STATUS.stop);
   });
-
+  
+  document.addEventListener("visibilitychange", ()=> {
+    if(document.hidden){
+      if(sequencer.status == sequencer.PLAY){
+        sequencer.pause();
+        sequencer.isHiddenPause = true;
+      }
+    } else {
+      if(sequencer.isHiddenPause){
+        sequencer.resume();
+        sequencer.isHiddenPause = false;
+      }
+    }
+  });
   // resetBtn.addEventListener('click',()=>{
   //   updateStatus(STATUS.reset);
   // });
