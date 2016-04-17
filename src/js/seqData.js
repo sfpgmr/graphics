@@ -9,7 +9,7 @@ export var seqData = {
       `
        s0.01,0.2,0.2,0.03 @2 
        t140  q35 v30 l1r1r1r1r1 $l16o3 cccccccc<ggggaabb> cccccccc<gggg>cc<bb b-b-b-b-b-b-b-b-ffffggg+g+ g+g+g+g+g+g+g+g+ggggaabb >
-      `
+             `
       },
     {
       name: 'part3',
