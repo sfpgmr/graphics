@@ -138,21 +138,21 @@ function createPeriodicWaveFromWaves(audioctx) {
 // ドラムサンプル
 
 const drumSamples = [
-  {name:'bass1',path:'bd1_lz.json'},
-  {name:'bass2',path:'bd1_lz.json'},
-  {name:'closed',path:'closed_lz.json'},
-  {name:'cowbell',path:'cowbell_lz.json'},
-  {name:'crash',path:'crash_lz.json'},
-  {name:'handclap',path:'handclap_lz.json'},
-  {name:'hitom',path:'hitom_lz.json'},
-  {name:'lowtom',path:'lowtom_lz.json'},
-  {name:'midtom',path:'midtom_lz.json'},
-  {name:'open',path:'open_lz.json'},
-  {name:'ride',path:'ride_lz.json'},
-  {name:'rimshot',path:'rimshot_lz.json'},
-  {name:'sd1',path:'sd1_lz.json'},
-  {name:'sd2',path:'sd2_lz.json'},
-  {name:'tamb',path:'tamb_lz.json'}
+  {name:'bass1',path:'bd1_lz.json'}, // @9
+  {name:'bass2',path:'bd2_lz.json'}, // @10
+  {name:'closed',path:'closed_lz.json'}, // @11
+  {name:'cowbell',path:'cowbell_lz.json'},// @12
+  {name:'crash',path:'crash_lz.json'},// @13
+  {name:'handclap',path:'handclap_lz.json'}, // @14
+  {name:'hitom',path:'hitom_lz.json'},// @15
+  {name:'lowtom',path:'lowtom_lz.json'},// @16
+  {name:'midtom',path:'midtom_lz.json'},// @17
+  {name:'open',path:'open_lz.json'},// @18
+  {name:'ride',path:'ride_lz.json'},// @19
+  {name:'rimshot',path:'rimshot_lz.json'},// @20
+  {name:'sd1',path:'sd1_lz.json'},// @21
+  {name:'sd2',path:'sd2_lz.json'},// @22
+  {name:'tamb',path:'tamb_lz.json'}// @23
 ];
 
 let xhr = new XMLHttpRequest();
@@ -171,28 +171,25 @@ function json(url){
   });
 }
 
-function readTest(audioctx){
-  json('./res/tamb_lz.json')
-  .then(data=>{
-    let sampleStr = lzbase62.decompress(data.samples);
-    let samples = decodeStr(4,sampleStr);
-    let ws = new WaveSample(audioctx,1,samples.length,data.sampleRate);
-    
-    let sb = ws.sample.getChannelData(0);
-    for(let i = 0,e = sb.length;i < e;++i){
-      sb[i] = samples[i];
-    }
-    let bufferSrc = audioctx.createBufferSource();
-    bufferSrc.loop = false;
-    bufferSrc.buffer = ws.sample;
-    bufferSrc.playbackRate.value = 1.0;
-    bufferSrc.connect(audioctx.destination);
-    bufferSrc.start(0);
-    bufferSrc.onended = function(){
-      this.disconnect();
-    }
-  })
-  .catch(e=>{throw e;});
+function readDrumSample(audioctx){
+  let pr = Promise.resolve(0);
+  
+  drumSamples.forEach((d)=>{
+    pr = 
+    pr.then(json.bind(null,'./res/' + d.path))
+    .then(data=>{
+      let sampleStr = lzbase62.decompress(data.samples);
+      let samples = decodeStr(4,sampleStr);
+      let ws = new WaveSample(audioctx,1,samples.length,data.sampleRate);
+      let sb = ws.sample.getChannelData(0);
+      for(let i = 0,e = sb.length;i < e;++i){
+        sb[i] = samples[i];
+      }
+      waveSamples.push(ws);
+    });
+  });
+  
+  return pr;
 }
 
 // export class WaveTexture { 
@@ -472,7 +469,7 @@ export class Audio {
         v.output.connect(this.filter);
       }
     }
-    readTest(this.audioctx);
+    this.readDrumSample =  readDrumSample(this.audioctx);
     //  this.started = false;
     //this.voices[0].output.connect();
   }

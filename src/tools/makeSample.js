@@ -45,17 +45,17 @@ readDir('./res/out/')
       let sampleData = {sampleRate:audioData.sampleRate};
       sampleData.samples = '';
       let samples = Array.prototype.slice.call(audioData.channelData[0].map((d)=>{
-        return (((d + 1.0) * 256.0) & 0xff) >>> 4;        
+        return Math.min(((d + 1.0) * 256.0),255.0) >>> 4;        
       }));
       if((samples.length % 2) != 0){
-        samples.push(0);
+        samples.push(8);
       }
       for(let i = 0,e = samples.length;i < e;i+=2){
         sampleData.samples += ('0' + ((samples[i] << 4) | (samples[i+1])).toString(16)
         ).slice(-2);
       }
       sampleData.samples = lzbase62.compress(sampleData.samples);
-      return writeFile('./res/out/' + path.basename(f,'.wav') + '_lz.json',JSON.stringify(sampleData,null,' '),'utf-8');
+      return writeFile('../res/' + path.basename(f,'.wav') + '_lz.json',JSON.stringify(sampleData,null,' '),'utf-8');
     });
     })(file);
   });
