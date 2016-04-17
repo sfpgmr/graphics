@@ -7,8 +7,8 @@ export var seqData = {
       channel: 0,
       mml:
       `
-       s0.01,0.2,0.2,0.07 @2 
-       t140 l16 q25 v30 $o3 cccccccc<ggggaabb> cccccccc<gggg>cc<bb b-b-b-b-b-b-b-b-ffffggg+g+ g+g+g+g+g+g+g+g+ggggaabb >
+       s0.01,0.2,0.2,0.03 @2 
+       t140  q35 v30 l1r1r1r1r1 $l16o3 cccccccc<ggggaabb> cccccccc<gggg>cc<bb b-b-b-b-b-b-b-b-ffffggg+g+ g+g+g+g+g+g+g+g+ggggaabb >
       `
       },
     {
