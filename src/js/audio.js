@@ -8,17 +8,19 @@ import Syntax from "./Syntax";
 import Scanner from "./Scanner";
 import MMLParser from "./MMLParser";
 import DefaultParams from "./DefaultParams";
-
+import lzbase62 from "./lzbase62.min";
 
 // var fft = new FFT(4096, 44100);
 const BUFFER_SIZE = 1024;
 const TIME_BASE = 96;
 
+// MIDIノート => 再生レート変換テーブル
 var noteFreq = [];
 for (var i = -69; i < 58; ++i) {
   noteFreq.push(Math.pow(2, i / 12));
 }
 
+// MIDIノート周波数 変換テーブル
 var midiFreq = [];
 for(let i = 0;i < 127;++i){
   midiFreq.push(midicps(i));
@@ -26,21 +28,6 @@ for(let i = 0;i < 127;++i){
 function midicps(noteNumber) {
   return 440 * Math.pow(2, (noteNumber - 69) * 1 / 12);
 }
-
-var SquareWave = {
-  bits: 4,
-  wavedata: [0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0, 0, 0, 0, 0, 0, 0, 0]
-};// 4bit wave form
-
-var SawWave = {
-  bits: 4,
-  wavedata: [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf]
-};// 4bit wave form
-
-var TriWave = {
-  bits: 4,
-  wavedata: [0x0, 0x2, 0x4, 0x6, 0x8, 0xA, 0xC, 0xE, 0xF, 0xE, 0xC, 0xA, 0x8, 0x6, 0x4, 0x2]
-};
 
 export function decodeStr(bits, wavestr) {
   var arr = [];
@@ -50,7 +37,7 @@ export function decodeStr(bits, wavestr) {
   while (c < wavestr.length) {
     var d = 0;
     for (var i = 0; i < n; ++i) {
-      eval("d = (d << 4) + 0x" + wavestr.charAt(c++) + ";");
+      d = (d << 4) + parseInt(wavestr.charAt(c++),'16');
     }
     arr.push((d - zeropos) / zeropos);
   }
@@ -68,6 +55,7 @@ var waves = [
     decodeStr(4, 'EE77EE77EE77EE770077007700770077'),
     decodeStr(4, 'EEEE8888888888880000888888888888')//ノイズ用のダミー波形
 ];
+
 
 
 var waveSamples = [];
@@ -147,7 +135,65 @@ function createPeriodicWaveFromWaves(audioctx) {
   });
 }
 
+// ドラムサンプル
 
+const drumSamples = [
+  {name:'bass1',path:'bd1_lz.json'},
+  {name:'bass2',path:'bd1_lz.json'},
+  {name:'closed',path:'closed_lz.json'},
+  {name:'cowbell',path:'cowbell_lz.json'},
+  {name:'crash',path:'crash_lz.json'},
+  {name:'handclap',path:'handclap_lz.json'},
+  {name:'hitom',path:'hitom_lz.json'},
+  {name:'lowtom',path:'lowtom_lz.json'},
+  {name:'midtom',path:'midtom_lz.json'},
+  {name:'open',path:'open_lz.json'},
+  {name:'ride',path:'ride_lz.json'},
+  {name:'rimshot',path:'rimshot_lz.json'},
+  {name:'sd1',path:'sd1_lz.json'},
+  {name:'sd2',path:'sd2_lz.json'},
+  {name:'tamb',path:'tamb_lz.json'}
+];
+
+let xhr = new XMLHttpRequest();
+function json(url){
+  return new Promise((resolve,reject)=>{
+    xhr.open("get",url,true);
+    xhr.onload = function(){
+      if(xhr.status == 200){
+        resolve(JSON.parse(this.responseText));
+      } else {
+        reject(new Error('XMLHttpRequest Error:' + xhr.status));
+      }
+    };
+    xhr.onerror = err => {reject(err);};
+    xhr.send(null);
+  });
+}
+
+function readTest(audioctx){
+  json('./res/tamb_lz.json')
+  .then(data=>{
+    let sampleStr = lzbase62.decompress(data.samples);
+    let samples = decodeStr(4,sampleStr);
+    let ws = new WaveSample(audioctx,1,samples.length,data.sampleRate);
+    
+    let sb = ws.sample.getChannelData(0);
+    for(let i = 0,e = sb.length;i < e;++i){
+      sb[i] = samples[i];
+    }
+    let bufferSrc = audioctx.createBufferSource();
+    bufferSrc.loop = false;
+    bufferSrc.buffer = ws.sample;
+    bufferSrc.playbackRate.value = 1.0;
+    bufferSrc.connect(audioctx.destination);
+    bufferSrc.start(0);
+    bufferSrc.onended = function(){
+      this.disconnect();
+    }
+  })
+  .catch(e=>{throw e;});
+}
 
 // export class WaveTexture { 
 //   constructor(wave) {
@@ -426,6 +472,7 @@ export class Audio {
         v.output.connect(this.filter);
       }
     }
+    readTest(this.audioctx);
     //  this.started = false;
     //this.voices[0].output.connect();
   }

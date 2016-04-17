@@ -28,12 +28,14 @@
     "gulp-postcss": "^6.0.0",
     "gulp-sourcemaps": "^1.6.0",
     "gulp-watch": "^4.3.5",
+    "lzbase62": "^1.4.6",
     "postcss-import": "^7.0.0",
     "postcss-mixins": "^2.1.1",
     "postcss-nested": "^1.0.0",
     "postcss-simple-vars": "^1.0.0",
     "uglifyify": "^3.0.1",
-    "vinyl-source-stream": "^1.1.0"
+    "vinyl-source-stream": "^1.1.0",
+    "wav-decoder": "^1.1.0"
   },
   "dependencies": {
     "strip-comments": "^0.4.4"

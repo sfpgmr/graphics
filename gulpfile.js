@@ -76,6 +76,11 @@ gulp.task('postcss', function() {
         .pipe(logger({ beforeEach: '[postcss] wrote: ' }));
 });
 
+//リソースのコピー
+gulp.task('resource',function(){
+  gulp.src('./src/res/*.*').pipe(gulp.dest('./dist/res'));
+});
+
 //HTMLのコピー
 gulp.task('html',function(){
   gulp.src('./src/html/*.html').pipe(gulp.dest('./dist'));
@@ -103,10 +108,17 @@ gulp.task('devver',function(){
   } catch (e){
     
   }
+
+  try {
+    fs.mkdirSync(destdir + '/res');
+  } catch (e){
+    
+  }
   
   gulp.src('./dist/*.html').pipe(gulp.dest(destdir));
   gulp.src('./dist/js/*.js').pipe(gulp.dest(destdir + '/js'));
   gulp.src('./dist/css/*.*').pipe(gulp.dest(destdir + '/css'));
+  gulp.src('./dist/res/*.*').pipe(gulp.dest(destdir + '/res'));
 
 });
 
@@ -124,10 +136,11 @@ gulp.task('bs-reload', function () {
     browserSync.reload();
 });
 
-gulp.task('default',['js','postcss','browser-sync','html'],function(){
+gulp.task('default',['js','postcss','browser-sync','html','resource'],function(){
     watch('./src/js/**/*.js',()=>gulp.start(['js']));
     watch('./src/html/**/*.html',()=>gulp.start(['html']));
     watch('./src/css/**/*.css',()=>gulp.start(['postcss']));
+    watch('./src/res/**/*.*',()=>gulp.start(['resource']));
     //watch('./dist/**/*.*',()=>gulp.start(['bs-reload']));
 });
 }();
