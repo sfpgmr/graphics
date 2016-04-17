@@ -986,8 +986,11 @@ export class Sequencer {
   }
   start() {
     //    this.handle = window.setTimeout(function () { self.process() }, 50);
-    this.status = this.PLAY;
-    this.process();
+    this.audio.readDrumSample
+    .then(()=>{
+      this.status = this.PLAY;
+      this.process();
+    });
   }
   process() {
     if (this.status == this.PLAY) {
