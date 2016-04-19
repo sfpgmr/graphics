@@ -22,7 +22,7 @@ for (var i = -69; i < 58; ++i) {
 
 // MIDIノート周波数 変換テーブル
 var midiFreq = [];
-for(let i = 0;i < 127;++i){
+for (let i = 0; i < 127; ++i) {
   midiFreq.push(midicps(i));
 }
 function midicps(noteNumber) {
@@ -37,7 +37,7 @@ export function decodeStr(bits, wavestr) {
   while (c < wavestr.length) {
     var d = 0;
     for (var i = 0; i < n; ++i) {
-      d = (d << 4) + parseInt(wavestr.charAt(c++),'16');
+      d = (d << 4) + parseInt(wavestr.charAt(c++), '16');
     }
     arr.push((d - zeropos) / zeropos);
   }
@@ -45,15 +45,15 @@ export function decodeStr(bits, wavestr) {
 }
 
 var waves = [
-    decodeStr(4, 'EEEEEEEEEEEEEEEE0000000000000000'),
-    decodeStr(4, '00112233445566778899AABBCCDDEEFF'),
-    decodeStr(4, '023466459AA8A7A977965656ACAACDEF'),
-    decodeStr(4, 'BDCDCA999ACDCDB94212367776321247'),
-    decodeStr(4, '7ACDEDCA742101247BDEDB7320137E78'),
-    decodeStr(4, 'ACCA779BDEDA66679994101267742247'),
-    decodeStr(4, '7EC9CEA7CFD8AB728D94572038513531'),
-    decodeStr(4, 'EE77EE77EE77EE770077007700770077'),
-    decodeStr(4, 'EEEE8888888888880000888888888888')//ノイズ用のダミー波形
+  decodeStr(4, 'EEEEEEEEEEEEEEEE0000000000000000'),
+  decodeStr(4, '00112233445566778899AABBCCDDEEFF'),
+  decodeStr(4, '023466459AA8A7A977965656ACAACDEF'),
+  decodeStr(4, 'BDCDCA999ACDCDB94212367776321247'),
+  decodeStr(4, '7ACDEDCA742101247BDEDB7320137E78'),
+  decodeStr(4, 'ACCA779BDEDA66679994101267742247'),
+  decodeStr(4, '7EC9CEA7CFD8AB728D94572038513531'),
+  decodeStr(4, 'EE77EE77EE77EE770077007700770077'),
+  decodeStr(4, 'EEEE8888888888880000888888888888')//ノイズ用のダミー波形
 ];
 
 
@@ -103,34 +103,34 @@ export function createWaveSampleFromWaves(audioctx, sampleLength) {
 }
 
 // 参考：http://www.g200kg.com/archives/2014/12/webaudioapiperi.html
-function fourier(waveform,len){
-    var real=new Float32Array(len),imag=new Float32Array(len);
-    var wavlen=waveform.length;
-    for(var i = 0; i < len; ++i){
-        for(var j = 0; j < len; ++j){
-            var wavj = j / len * wavlen;
-            var d = waveform[wavj|0];
-            var th = i * j / len * 2 * Math.PI;
-            real[i] += Math.cos(th) * d;
-            imag[i] += Math.sin(th) * d;
-        }
+function fourier(waveform, len) {
+  var real = new Float32Array(len), imag = new Float32Array(len);
+  var wavlen = waveform.length;
+  for (var i = 0; i < len; ++i) {
+    for (var j = 0; j < len; ++j) {
+      var wavj = j / len * wavlen;
+      var d = waveform[wavj | 0];
+      var th = i * j / len * 2 * Math.PI;
+      real[i] += Math.cos(th) * d;
+      imag[i] += Math.sin(th) * d;
     }
-    return [real,imag];
+  }
+  return [real, imag];
 }
 
 function createPeriodicWaveFromWaves(audioctx) {
-  return waves.map((d,i)=>{
-    if(i != 8){
+  return waves.map((d, i) => {
+    if (i != 8) {
       let waveData = waves[i];
-      let freqData = fourier(waveData,waveData.length);
-      return audioctx.createPeriodicWave(freqData[0],freqData[1]);
+      let freqData = fourier(waveData, waveData.length);
+      return audioctx.createPeriodicWave(freqData[0], freqData[1]);
     } else {
       let waveData = [];
-      for(let j = 0,e = waves[i].length;j < e;++j){
-        waveData.push(Math.random() * 2.0 - 1.0);        
+      for (let j = 0, e = waves[i].length; j < e; ++j) {
+        waveData.push(Math.random() * 2.0 - 1.0);
       }
-      let freqData = fourier(waveData,waveData.length);
-      return audioctx.createPeriodicWave(freqData[0],freqData[1]);
+      let freqData = fourier(waveData, waveData.length);
+      return audioctx.createPeriodicWave(freqData[0], freqData[1]);
     }
   });
 }
@@ -138,57 +138,57 @@ function createPeriodicWaveFromWaves(audioctx) {
 // ドラムサンプル
 
 const drumSamples = [
-  {name:'bass1',path:'bd1_lz.json'}, // @9
-  {name:'bass2',path:'bd2_lz.json'}, // @10
-  {name:'closed',path:'closed_lz.json'}, // @11
-  {name:'cowbell',path:'cowbell_lz.json'},// @12
-  {name:'crash',path:'crash_lz.json'},// @13
-  {name:'handclap',path:'handclap_lz.json'}, // @14
-  {name:'hitom',path:'hitom_lz.json'},// @15
-  {name:'lowtom',path:'lowtom_lz.json'},// @16
-  {name:'midtom',path:'midtom_lz.json'},// @17
-  {name:'open',path:'open_lz.json'},// @18
-  {name:'ride',path:'ride_lz.json'},// @19
-  {name:'rimshot',path:'rimshot_lz.json'},// @20
-  {name:'sd1',path:'sd1_lz.json'},// @21
-  {name:'sd2',path:'sd2_lz.json'},// @22
-  {name:'tamb',path:'tamb_lz.json'}// @23
+  { name: 'bass1', path: 'bd1_lz.json' }, // @9
+  { name: 'bass2', path: 'bd2_lz.json' }, // @10
+  { name: 'closed', path: 'closed_lz.json' }, // @11
+  { name: 'cowbell', path: 'cowbell_lz.json' },// @12
+  { name: 'crash', path: 'crash_lz.json' },// @13
+  { name: 'handclap', path: 'handclap_lz.json' }, // @14
+  { name: 'hitom', path: 'hitom_lz.json' },// @15
+  { name: 'lowtom', path: 'lowtom_lz.json' },// @16
+  { name: 'midtom', path: 'midtom_lz.json' },// @17
+  { name: 'open', path: 'open_lz.json' },// @18
+  { name: 'ride', path: 'ride_lz.json' },// @19
+  { name: 'rimshot', path: 'rimshot_lz.json' },// @20
+  { name: 'sd1', path: 'sd1_lz.json' },// @21
+  { name: 'sd2', path: 'sd2_lz.json' },// @22
+  { name: 'tamb', path: 'tamb_lz.json' }// @23
 ];
 
 let xhr = new XMLHttpRequest();
-function json(url){
-  return new Promise((resolve,reject)=>{
-    xhr.open("get",url,true);
-    xhr.onload = function(){
-      if(xhr.status == 200){
+function json(url) {
+  return new Promise((resolve, reject) => {
+    xhr.open("get", url, true);
+    xhr.onload = function () {
+      if (xhr.status == 200) {
         resolve(JSON.parse(this.responseText));
       } else {
         reject(new Error('XMLHttpRequest Error:' + xhr.status));
       }
     };
-    xhr.onerror = err => {reject(err);};
+    xhr.onerror = err => { reject(err); };
     xhr.send(null);
   });
 }
 
-function readDrumSample(audioctx){
+function readDrumSample(audioctx) {
   let pr = Promise.resolve(0);
-  
-  drumSamples.forEach((d)=>{
-    pr = 
-    pr.then(json.bind(null,'./res/' + d.path))
-    .then(data=>{
-      let sampleStr = lzbase62.decompress(data.samples);
-      let samples = decodeStr(4,sampleStr);
-      let ws = new WaveSample(audioctx,1,samples.length,data.sampleRate);
-      let sb = ws.sample.getChannelData(0);
-      for(let i = 0,e = sb.length;i < e;++i){
-        sb[i] = samples[i];
-      }
-      waveSamples.push(ws);
-    });
+
+  drumSamples.forEach((d) => {
+    pr =
+      pr.then(json.bind(null, './res/' + d.path))
+        .then(data => {
+          let sampleStr = lzbase62.decompress(data.samples);
+          let samples = decodeStr(4, sampleStr);
+          let ws = new WaveSample(audioctx, 1, samples.length, data.sampleRate);
+          let sb = ws.sample.getChannelData(0);
+          for (let i = 0, e = sb.length; i < e; ++i) {
+            sb[i] = samples[i];
+          }
+          waveSamples.push(ws);
+        });
   });
-  
+
   return pr;
 }
 
@@ -224,28 +224,28 @@ function readDrumSample(audioctx){
 // };
 
 /// エンベロープジェネレーター
-export class EnvelopeGenerator{
+export class EnvelopeGenerator {
   constructor(voice, attack, decay, sustain, release) {
-  this.voice = voice;
-  //this.keyon = false;
-  this.attackTime = attack || 0.0005;
-  this.decayTime = decay || 0.05;
-  this.sustainLevel = sustain || 0.5;
-  this.releaseTime = release || 0.5;
-  this.v = 1.0;
-  this.keyOnTime = 0;
-  this.keyOffTime = 0;
-  this.keyOn = false;
+    this.voice = voice;
+    //this.keyon = false;
+    this.attackTime = attack || 0.0005;
+    this.decayTime = decay || 0.05;
+    this.sustainLevel = sustain || 0.5;
+    this.releaseTime = release || 0.5;
+    this.v = 1.0;
+    this.keyOnTime = 0;
+    this.keyOffTime = 0;
+    this.keyOn = false;
   }
 
-  keyon(t,vel) {
+  keyon(t, vel) {
     this.v = vel || 1.0;
     var v = this.v;
     var t0 = t || this.voice.audioctx.currentTime;
     var t1 = t0 + this.attackTime;
     var gain = this.voice.gain.gain;
     gain.cancelScheduledValues(t0);
-    gain.setValueAtTime(0,t0);
+    gain.setValueAtTime(0, t0);
     gain.linearRampToValueAtTime(v, t1);
     gain.linearRampToValueAtTime(this.sustainLevel * v, t1 + this.decayTime);
     //gain.setTargetAtTime(this.sustain * v, t1, t1 + this.decay / v);
@@ -253,12 +253,12 @@ export class EnvelopeGenerator{
     this.keyOffTime = 0;
     this.keyOn = true;
   }
-  
+
   keyoff(t) {
     var voice = this.voice;
     var gain = voice.gain.gain;
     var t0 = t || voice.audioctx.currentTime;
-//    gain.cancelScheduledValues(this.keyOnTime);
+    //    gain.cancelScheduledValues(this.keyOnTime);
     gain.cancelScheduledValues(t0);
     let release_time = t0 + this.releaseTime;
     gain.linearRampToValueAtTime(0, release_time);
@@ -305,7 +305,7 @@ export class Voice {
     this.processor.onended = () => {
       processor.disconnect();
       gain.disconnect();
-      };    
+    };
     gain.connect(this.volume);
   }
 
@@ -316,43 +316,40 @@ export class Voice {
   //     this.initProcessor();
   //     this.processor.start();
   // }
-  
+
   start(startTime) {
- //   this.processor.disconnect(this.gain);
+    //   this.processor.disconnect(this.gain);
     this.initProcessor();
     this.processor.start(startTime);
   }
-  
+
   stop(time) {
     this.processor.stop(time);
     //this.reset();
   }
-  
-  keyon(t,note,vel)
-  {
+
+  keyon(t, note, vel) {
     this.start(t);
     this.processor.playbackRate.setValueAtTime(noteFreq[note] * this.detune, t);
     this.keyOnTime = t;
-    this.envelope.keyon(t,vel);
+    this.envelope.keyon(t, vel);
   }
-  
-  keyoff(t)
-  {
+
+  keyoff(t) {
     this.gain.gain.cancelScheduledValues(t/*this.keyOnTime*/);
     this.keyOffTime = this.envelope.keyoff(t);
     this.processor.stop(this.keyOffTime);
   }
-  
-  isKeyOn(t){
-     return this.envelope.keyOn && (this.keyOnTime <= t);    
+
+  isKeyOn(t) {
+    return this.envelope.keyOn && (this.keyOnTime <= t);
   }
 
-  isKeyOff(t){
-     return !this.envelope.keyOn && (this.keyOffTime <= t);    
+  isKeyOff(t) {
+    return !this.envelope.keyOn && (this.keyOffTime <= t);
   }
-  
-  reset()
-  {
+
+  reset() {
     this.processor.playbackRate.cancelScheduledValues(0);
     this.gain.gain.cancelScheduledValues(0);
     this.gain.gain.value = 0;
@@ -361,7 +358,7 @@ export class Voice {
 
 /// ボイス
 export class OscVoice {
-  constructor(audioctx,periodicWave) {
+  constructor(audioctx, periodicWave) {
     this.audioctx = audioctx;
     this.sample = periodicWave;
     this.volume = audioctx.createGain();
@@ -384,46 +381,43 @@ export class OscVoice {
     this.processor.setPeriodicWave(this.sample);
     this.processor.connect(this.gain);
     this.processor.onended = () => {
-          processor.disconnect();
-          gain.disconnect();
-    };    
+      processor.disconnect();
+      gain.disconnect();
+    };
     this.gain.connect(this.volume);
-   }
+  }
 
   start(startTime) {
     this.initProcessor();
     this.processor.start(startTime);
   }
-  
+
   stop(time) {
     this.processor.stop(time);
   }
-  
-  keyon(t,note,vel)
-  {
+
+  keyon(t, note, vel) {
     this.start(t);
     this.processor.frequency.setValueAtTime(midiFreq[note] * this.detune, t);
     this.keyOnTime = t;
-    this.envelope.keyon(t,vel);
+    this.envelope.keyon(t, vel);
   }
-  
-  keyoff(t)
-  {
+
+  keyoff(t) {
     this.gain.gain.cancelScheduledValues(t/*this.keyOnTime*/);
     this.keyOffTime = this.envelope.keyoff(t);
     this.processor.stop(this.keyOffTime);
   }
-  
-  isKeyOn(t){
-     return this.envelope.keyOn && (this.keyOnTime <= t);    
+
+  isKeyOn(t) {
+    return this.envelope.keyOn && (this.keyOnTime <= t);
   }
 
-  isKeyOff(t){
-     return !this.envelope.keyOn && (this.keyOffTime <= t);    
+  isKeyOff(t) {
+    return !this.envelope.keyOn && (this.keyOffTime <= t);
   }
-  
-  reset()
-  {
+
+  reset() {
     this.processor.playbackRate.cancelScheduledValues(0);
     this.gain.gain.cancelScheduledValues(0);
     this.gain.gain.value = 0;
@@ -431,68 +425,65 @@ export class OscVoice {
 }
 
 export class Audio {
- constructor() {
-  this.VOICES = 16;
-  this.enable = false;
-  this.audioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
+  constructor() {
+    this.VOICES = 16;
+    this.enable = false;
+    this.audioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
 
-  if (this.audioContext) {
-    this.audioctx = new this.audioContext();
-    this.enable = true;
-  }
-
-  this.voices = [];
-  if (this.enable) {
-    createWaveSampleFromWaves(this.audioctx, BUFFER_SIZE);
-    this.periodicWaves = createPeriodicWaveFromWaves(this.audioctx);
-    this.filter = this.audioctx.createBiquadFilter();
-    this.filter.type = 'lowpass';
-    this.filter.frequency.value = 20000;
-    this.filter.Q.value = 0.0001;
-    this.noiseFilter = this.audioctx.createBiquadFilter();
-    this.noiseFilter.type = 'lowpass';
-    this.noiseFilter.frequency.value = 1000;
-    this.noiseFilter.Q.value = 1.8;
-    this.comp = this.audioctx.createDynamicsCompressor();
-    this.filter.connect(this.comp);
-    this.noiseFilter.connect(this.comp);
-    this.comp.connect(this.audioctx.destination);
-    // this.filter.connect(this.audioctx.destination);
-    // this.noiseFilter.connect(this.audioctx.destination);
-    for (var i = 0,end = this.VOICES; i < end; ++i) {
-      //var v = new OscVoice(this.audioctx,this.periodicWaves[0]);
-      var v = new Voice(this.audioctx);
-      this.voices.push(v);
-      if(i == (this.VOICES - 1)){
-        v.output.connect(this.noiseFilter);
-      } else{
-        v.output.connect(this.filter);
-      }
+    if (this.audioContext) {
+      this.audioctx = new this.audioContext();
+      this.enable = true;
     }
-    this.readDrumSample =  readDrumSample(this.audioctx);
-    //  this.started = false;
-    //this.voices[0].output.connect();
-  }
- }
 
-  start()
-  {
+    this.voices = [];
+    if (this.enable) {
+      createWaveSampleFromWaves(this.audioctx, BUFFER_SIZE);
+      this.periodicWaves = createPeriodicWaveFromWaves(this.audioctx);
+      this.filter = this.audioctx.createBiquadFilter();
+      this.filter.type = 'lowpass';
+      this.filter.frequency.value = 20000;
+      this.filter.Q.value = 0.0001;
+      this.noiseFilter = this.audioctx.createBiquadFilter();
+      this.noiseFilter.type = 'lowpass';
+      this.noiseFilter.frequency.value = 1000;
+      this.noiseFilter.Q.value = 1.8;
+      this.comp = this.audioctx.createDynamicsCompressor();
+      this.filter.connect(this.comp);
+      this.noiseFilter.connect(this.comp);
+      this.comp.connect(this.audioctx.destination);
+      // this.filter.connect(this.audioctx.destination);
+      // this.noiseFilter.connect(this.audioctx.destination);
+      for (var i = 0, end = this.VOICES; i < end; ++i) {
+        //var v = new OscVoice(this.audioctx,this.periodicWaves[0]);
+        var v = new Voice(this.audioctx);
+        this.voices.push(v);
+        if (i == (this.VOICES - 1)) {
+          v.output.connect(this.noiseFilter);
+        } else {
+          v.output.connect(this.filter);
+        }
+      }
+      this.readDrumSample = readDrumSample(this.audioctx);
+      //  this.started = false;
+      //this.voices[0].output.connect();
+    }
+  }
+
+  start() {
     // var voices = this.voices;
     // for (var i = 0, end = voices.length; i < end; ++i)
     // {
     //   voices[i].start(0);
     // }
   }
-  
-  stop()
-  {
+
+  stop() {
     //if(this.started)
     //{
-      var voices = this.voices;
-      for (var i = 0, end = voices.length; i < end; ++i)
-      {
-        voices[i].stop(0);
-      }
+    var voices = this.voices;
+    for (var i = 0, end = voices.length; i < end; ++i) {
+      voices[i].stop(0);
+    }
     //  this.started = false;
     //}
   }
@@ -537,17 +528,16 @@ export class Note {
       this.step = calcStep(length);
     }
   }
-  
-  process(track) 
-  {
-    this.notes.forEach((n,i)=>{
+
+  process(track) {
+    this.notes.forEach((n, i) => {
       var back = track.back;
       var note = n;
       var oct = this.oct || back.oct;
       var step = this.step || back.step;
       var gate = this.gate || back.gate;
       var vel = this.vel || back.vel;
-      setQueue(track, note, oct,i==0?step:0, gate, vel);
+      setQueue(track, note, oct, i == 0 ? step : 0, gate, vel);
     });
   }
 }
@@ -570,18 +560,17 @@ class SeqData {
     var step = this.step || back.step;
     var gate = this.gate || back.gate;
     var vel = this.vel || back.vel;
-    setQueue(track,note,oct,step,gate,vel);
+    setQueue(track, note, oct, step, gate, vel);
   }
 }
 
-function setQueue(track,note,oct,step,gate,vel)
-{
+function setQueue(track, note, oct, step, gate, vel) {
   let no = note + oct * 12;
   let back = track.back;
-  var step_time = (step?track.playingTime:back.playingTime);
+  var step_time = (step ? track.playingTime : back.playingTime);
   // var gate_time = ((gate >= 0) ? gate * 60 : step * gate * 60 * -1.0) / (TIME_BASE * track.localTempo) + track.playingTime;
 
-  var gate_time = ((step==0?back.codeStep:step) * gate * 60) / (TIME_BASE * track.localTempo) + (step?track.playingTime:back.playingTime);
+  var gate_time = ((step == 0 ? back.codeStep : step) * gate * 60) / (TIME_BASE * track.localTempo) + (step ? track.playingTime : back.playingTime);
   //let voice = track.audio.voices[track.channel];
   let voice = track.assignVoice(step_time);
   //voice.reset();
@@ -594,38 +583,36 @@ function setQueue(track,note,oct,step,gate,vel)
   voice.volume.gain.setValueAtTime(back.volume, step_time);
 
   //voice.initProcessor();
-  
+
   //console.log(track.sequencer.tempo);
   voice.keyon(step_time, no, vel);
   voice.keyoff(gate_time);
- if(step){
-  back.codeStep = step;
-  back.playingTime = track.playingTime;
- }
+  if (step) {
+    back.codeStep = step;
+    back.playingTime = track.playingTime;
+  }
 
   track.playingTime = (step * 60) / (TIME_BASE * track.localTempo) + track.playingTime;
- // back.voice = voice;
- // back.note = note;
- // back.oct = oct;
- // back.gate = gate;
- // back.vel = vel;
+  // back.voice = voice;
+  // back.note = note;
+  // back.oct = oct;
+  // back.gate = gate;
+  // back.vel = vel;
 }
 
 
 function S(note, oct, step, gate, vel) {
   var args = Array.prototype.slice.call(arguments);
-  if (S.length != args.length)
-  {
-    if(typeof(args[args.length - 1]) == 'object' &&  !(args[args.length - 1] instanceof Note))
-    {
+  if (S.length != args.length) {
+    if (typeof (args[args.length - 1]) == 'object' && !(args[args.length - 1] instanceof Note)) {
       var args1 = args[args.length - 1];
       var l = args.length - 1;
       return new SeqData(
-      ((l != 0)?note:false) || args1.note || args1.n || null,
-      ((l != 1) ? oct : false) || args1.oct || args1.o || null,
-      ((l != 2) ? step : false) || args1.step || args1.s || null,
-      ((l != 3) ? gate : false) || args1.gate || args1.g || null,
-      ((l != 4) ? vel : false) || args1.vel || args1.v || null
+        ((l != 0) ? note : false) || args1.note || args1.n || null,
+        ((l != 1) ? oct : false) || args1.oct || args1.o || null,
+        ((l != 2) ? step : false) || args1.step || args1.s || null,
+        ((l != 3) ? gate : false) || args1.gate || args1.g || null,
+        ((l != 4) ? vel : false) || args1.vel || args1.v || null
       );
     }
   }
@@ -636,8 +623,8 @@ function S1(note, oct, step, gate, vel) {
   return S(note, oct, l(step), gate, vel);
 }
 
-function S2(note, len, dot , oct, gate, vel) {
-  return S(note, oct, l(len,dot), gate, vel);
+function S2(note, len, dot, oct, gate, vel) {
+  return S(note, oct, l(len, dot), gate, vel);
 }
 
 function S3(note, step, gate, vel, oct) {
@@ -667,7 +654,7 @@ class Step {
 
 /// ゲートタイム指定
 
-class GateTime{
+class GateTime {
   constructor(gate) {
     this.gate = gate / 100;
   }
@@ -689,16 +676,16 @@ class Velocity {
 }
 
 /// 音色設定
-class Tone{ 
+class Tone {
   constructor(no) {
     this.no = no;
     //this.sample = waveSamples[this.no];
   }
 
   process(track) {
-//    track.back.sample = track.audio.periodicWaves[this.no];
+    //    track.back.sample = track.audio.periodicWaves[this.no];
     track.back.sample = waveSamples[this.no];
-//    track.audio.voices[track.channel].setSample(waveSamples[this.no]);
+    //    track.audio.voices[track.channel].setSample(waveSamples[this.no]);
   }
 }
 
@@ -723,14 +710,14 @@ class Octave {
 }
 
 
-class OctaveUp{
+class OctaveUp {
   constructor(v) { this.v = v; }
   process(track) {
     track.back.oct += this.v;
   }
 }
 
-class OctaveDown{
+class OctaveDown {
   constructor(v) { this.v = v; }
   process(track) {
     track.back.oct -= this.v;
@@ -747,17 +734,15 @@ class Tempo {
   }
 }
 
-class Envelope{
-  constructor(attack, decay, sustain, release)
-  {
+class Envelope {
+  constructor(attack, decay, sustain, release) {
     this.attack = attack;
     this.decay = decay;
     this.sustain = sustain;
     this.release = release;
   }
 
-  process(track)
-  {
+  process(track) {
     //var envelope = track.audio.voices[track.channel].envelope;
     track.back.attack = this.attack;
     track.back.decay = this.decay;
@@ -778,7 +763,7 @@ class Detune {
   }
 }
 
-class Volume{
+class Volume {
   constructor(volume) {
     this.volume = volume / 100.0;
   }
@@ -808,14 +793,13 @@ class LoopData {
   }
 }
 
-class LoopEnd
-{
-  constructor(seqPos){
+class LoopEnd {
+  constructor(seqPos) {
     this.seqPos = seqPos;
   }
   process(track) {
     var ld = track.stack[track.stack.length - 1];
-    if(ld.outSeqPos == -1) ld.outSeqPos = this.seqPos;
+    if (ld.outSeqPos == -1) ld.outSeqPos = this.seqPos;
     ld.count--;
     if (ld.count > 0) {
       track.seqPos = ld.seqPos;
@@ -826,21 +810,21 @@ class LoopEnd
 }
 
 class LoopExit {
-  process(track){
+  process(track) {
     var ld = track.stack[track.stack.length - 1];
-    if(ld.count <= 1 && ld.outSeqPos != -1){
+    if (ld.count <= 1 && ld.outSeqPos != -1) {
       track.seqPos = ld.outSeqPos;
       track.stack.pop();
     }
   }
 }
 
-class InfiniteLoop{
-  process(track){
+class InfiniteLoop {
+  process(track) {
     track.infinitLoopIndex = track.seqPos;
   }
 }
-
+/////////////////////////////////
 /// シーケンサートラック
 class Track {
   constructor(sequencer, seqdata, audio) {
@@ -866,14 +850,14 @@ class Track {
       step: 96,
       gate: 0.5,
       vel: 1.0,
-      attack:0.01,
-      decay:0.05,
-      sustain:0.6,
-      release:0.07,
-      detune:1.0,
-      volume:0.5,
-//      sample:audio.periodicWaves[0]
-      sample:waveSamples[0]
+      attack: 0.01,
+      decay: 0.05,
+      sustain: 0.6,
+      release: 0.07,
+      detune: 1.0,
+      volume: 0.5,
+      //      sample:audio.periodicWaves[0]
+      sample: waveSamples[0]
     }
     this.stack = [];
   }
@@ -890,7 +874,7 @@ class Track {
     if (this.seqPos >= seqSize) {
       if (this.sequencer.repeat) {
         this.seqPos = 0;
-      } else if(this.infinitLoopIndex >= 0){
+      } else if (this.infinitLoopIndex >= 0) {
         this.seqPos = this.infinitLoopIndex;
       } else {
         this.end = true;
@@ -914,28 +898,30 @@ class Track {
   }
 
   reset() {
-    var curVoice = this.audio.voices[this.channel];
-    curVoice.gain.gain.cancelScheduledValues(0);
-    curVoice.processor.playbackRate.cancelScheduledValues(0);
-    curVoice.gain.gain.value = 0;
+    // var curVoice = this.audio.voices[this.channel];
+    // curVoice.gain.gain.cancelScheduledValues(0);
+    // curVoice.processor.playbackRate.cancelScheduledValues(0);
+    // curVoice.gain.gain.value = 0;
     this.playingTime = -1;
     this.seqPos = 0;
+    this.infinitLoopIndex = -1;
     this.end = false;
+    this.stack.length = 0;
   }
-  
-  assignVoice(t){
+
+  assignVoice(t) {
     let ret = null;
-    this.audio.voices.some((d,i)=>{
-      if(d.isKeyOff(t)){
+    this.audio.voices.some((d, i) => {
+      if (d.isKeyOff(t)) {
         ret = d;
         return true;
       }
       return false;
     });
-    if(!ret){
-      let oldestKeyOnData = (this.audio.voices.map((d,i)=>{
-        return {time:d.envelope.keyOnTime,d,i};        
-      }).sort((a,b)=> a.time - b.time ))[0];
+    if (!ret) {
+      let oldestKeyOnData = (this.audio.voices.map((d, i) => {
+        return { time: d.envelope.keyOnTime, d, i };
+      }).sort((a, b) => a.time - b.time))[0];
       ret = oldestKeyOnData.d;
     }
     return ret;
@@ -943,25 +929,24 @@ class Track {
 
 }
 
-function loadTracks(self,tracks, trackdata)
-{
+function loadTracks(self, tracks, trackdata) {
   for (var i = 0; i < trackdata.length; ++i) {
-    var track = new Track(self, trackdata[i].data,self.audio);
+    var track = new Track(self, trackdata[i].data, self.audio);
     track.channel = trackdata[i].channel;
-    track.oneshot = (!trackdata[i].oneshot)?false:true;
+    track.oneshot = (!trackdata[i].oneshot) ? false : true;
     track.track = i;
     tracks.push(track);
   }
 }
 
-function createTracks(trackdata)
-{
+function createTracks(trackdata) {
   var tracks = [];
-  loadTracks(this,tracks, trackdata);
+  loadTracks(this, tracks, trackdata);
   return tracks;
 }
 
-/// シーケンサー本体
+////////////////////////////
+/// シーケンサー本体 
 export class Sequencer {
   constructor(audio) {
     this.STOP = 0 | 0;
@@ -987,10 +972,10 @@ export class Sequencer {
   start() {
     //    this.handle = window.setTimeout(function () { self.process() }, 50);
     this.audio.readDrumSample
-    .then(()=>{
-      this.status = this.PLAY;
-      this.process();
-    });
+      .then(() => {
+        this.status = this.PLAY;
+        this.process();
+      });
   }
   process() {
     if (this.status == this.PLAY) {
@@ -1035,21 +1020,20 @@ export class Sequencer {
   }
 }
 
-function parseMML(data){
-  data.tracks.forEach((d)=>{
+function parseMML(data) {
+  data.tracks.forEach((d) => {
     d.data = parseMML_(d.mml);
   });
 }
 
-function parseMML_(mml)
-{
+function parseMML_(mml) {
   let parser = new MMLParser(mml);
   let commands = parser.parse();
-  let seqArray = [];  
-  commands.forEach((command)=>{
-    switch(command.type){
+  let seqArray = [];
+  commands.forEach((command) => {
+    switch (command.type) {
       case Syntax.Note:
-        seqArray.push(new Note(command.noteNumbers,command.noteLength));
+        seqArray.push(new Note(command.noteNumbers, command.noteLength));
         break;
       case Syntax.Rest:
         seqArray.push(new Rest(command.noteLength));
@@ -1058,7 +1042,7 @@ function parseMML_(mml)
         seqArray.push(new Octave(command.value));
         break;
       case Syntax.OctaveShift:
-        if(command.direction >=0){
+        if (command.direction >= 0) {
           seqArray.push(new OctaveUp(1));
         } else {
           seqArray.push(new OctaveDown(1));
@@ -1080,20 +1064,20 @@ function parseMML_(mml)
         seqArray.push(new InfiniteLoop());
         break;
       case Syntax.LoopBegin:
-        seqArray.push(new LoopData(null,'',command.value,null));
+        seqArray.push(new LoopData(null, '', command.value, null));
         break;
       case Syntax.LoopExit:
         seqArray.push(new LoopExit());
         break;
       case Syntax.LoopEnd:
-        seqArray.push( new LoopEnd());
+        seqArray.push(new LoopEnd());
         break;
       case Syntax.Tone:
         seqArray.push(new Tone(command.value));
       case Syntax.WaveForm:
         break;
       case Syntax.Envelope:
-        seqArray.push(new Envelope(command.a,command.d,command.s,command.r));
+        seqArray.push(new Envelope(command.a, command.d, command.s, command.r));
         break;
     }
   });

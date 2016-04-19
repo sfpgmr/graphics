@@ -550,13 +550,65 @@ window.addEventListener('load',()=>{
         offset += 1;
     }
   }
+
+  function setColor(x,y,color,bgcolor)
+  {
+    let offset = x + y * charCodeBufferWidth;
+    charAttrBuffer[offset] = (color << 4) | bgcolor | (charAttrBuffer[offset] & 0x80);
+  }
   
+  function *circleLoop(colors,cx,cy,t) 
+  {
+      //while (true) {
+      //cls();
+      
+      for(let i = 0;i < 256;++i)
+      {
+        for(let x = 0,ex = 40;x < ex;++x){
+          for(let y = 0,ey = 25;y < ey;++y){
+            let dx = Math.abs(x - cx),dy = Math.abs(y - cy);
+            let c = colors[(Math.sin(Math.sqrt(dx*dx + dy*dy) + t) * 18 + 18) | 0];
+            setColor(x,y,c.back,c.front);         
+          }
+        }
+        t += 0.2;
+        yield;
+      }
+      
+      return t;  
+  }
+
+  function *rectLoop(colors,cx,cy,t) 
+  {
+      //while (true) {
+      //cls();
+      
+      for(let i = 0;i < 256;++i)
+      {
+        for(let x = 0,ex = 40;x < ex;++x){
+          for(let y = 0,ey = 25;y < ey;++y){
+            let dx = Math.abs(x - cx),dy = Math.abs(y - cy);
+            let c;
+            if(dx > dy) {
+              c = colors[(Math.sin(dx + t) * 18 + 18) | 0];
+            } else {
+              c = colors[(Math.sin(dy + t) * 18 + 18) | 0];
+            }
+            setColor(x,y,c.back,c.front);         
+          }
+        }
+        t += 0.2;
+        yield;
+      }
+      
+      return t;  
+  }
+
   
   // メイン
   function run(){
     var gen = (function * (){
-      while (true) {
-        cls();
+      //while (true) {
         // palletColors.set([0,1,2,3,4,5,6,7]);
         // for (let y = 0; y < virtualHeight; ++y) {
         //   for (let x = 0; x < virtualWidth; ++x) {
@@ -635,72 +687,94 @@ window.addEventListener('load',()=>{
         //   charAttrBuffer[(i / 40 * 64) | 0 + i % 40] =0xf1;
         // }
         // yield;
-        let mes =  'MZ-700ﾌｫﾝﾄｦﾋｮｳｼﾞﾃﾞﾓ';
-        let mes1 = '                   ';
+        // let mes =  'MZ-700ﾌｫﾝﾄｦﾋｮｳｼﾞﾃﾞﾓ';
+        // let mes1 = '                   ';
         
-        for(let i = 0;i < 5;++i){
-          print(20 - (mes.length / 2) | 0,10,mes,7,0);
-          for(let j = 0;j < 16;++j){
-            yield;
-          }
-          print(20 - (mes1.length / 2) | 0,10,mes1,7,0);
-          for(let j = 0;j < 16;++j){
-            yield;
-          }
-        }
-        {
-          let i = 0;
-          let xs = 0, xe = 40 ,ys = 0,ye = 25;
-          let x = 0 , y = 0, c = 0;
-          while(true){
-            for(x = xs; x < xe; ++x){
-              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-              ++i;
-              i = i % 512;
-              yield;
-            }
-            ++c;
-            --x;
-            ++ys;
-            if((xs >= xe) || (ys >= ye)) break;
-            for(y = ys; y < ye; ++y){
-              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-              ++i;
-              i = i % 512;
-              yield;
-            }
-            ++c;
-            --y;
-            --xe;
-            if((xs >= xe) || (ys >= ye)) break;
-            for(x = xe - 1; x >= xs ; --x){
-              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-              ++i;
-              i = i % 512;
-              yield;
-            }
-            ++c;
-            --ye;
-            ++x;
-            if((xs >= xe) || (ys >= ye)) break;
-            for(y = ye - 1; y >= ys;--y){
-              printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-              ++i;
-              i = i % 512;
-              yield;
-            }
-            ++c;
-            ++y;
-            ++xs;
-            if((xs >= xe) || (ys >= ye)) break;
-          }
+        // for(let i = 0;i < 5;++i){
+        //   print(20 - (mes.length / 2) | 0,10,mes,7,0);
+        //   for(let j = 0;j < 16;++j){
+        //     yield;
+        //   }
+        //   print(20 - (mes1.length / 2) | 0,10,mes1,7,0);
+        //   for(let j = 0;j < 16;++j){
+        //     yield;
+        //   }
+        // }
+        // {
+        //   let i = 0;
+        //   let xs = 0, xe = 40 ,ys = 0,ye = 25;
+        //   let x = 0 , y = 0, c = 0;
+        //   while(true){
+        //     for(x = xs; x < xe; ++x){
+        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+        //       ++i;
+        //       i = i % 512;
+        //       yield;
+        //     }
+        //     ++c;
+        //     --x;
+        //     ++ys;
+        //     if((xs >= xe) || (ys >= ye)) break;
+        //     for(y = ys; y < ye; ++y){
+        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+        //       ++i;
+        //       i = i % 512;
+        //       yield;
+        //     }
+        //     ++c;
+        //     --y;
+        //     --xe;
+        //     if((xs >= xe) || (ys >= ye)) break;
+        //     for(x = xe - 1; x >= xs ; --x){
+        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+        //       ++i;
+        //       i = i % 512;
+        //       yield;
+        //     }
+        //     ++c;
+        //     --ye;
+        //     ++x;
+        //     if((xs >= xe) || (ys >= ye)) break;
+        //     for(y = ye - 1; y >= ys;--y){
+        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
+        //       ++i;
+        //       i = i % 512;
+        //       yield;
+        //     }
+        //     ++c;
+        //     ++y;
+        //     ++xs;
+        //     if((xs >= xe) || (ys >= ye)) break;
+        //   }
           
+        // }
+        // for(let j = 0;j < 64;++j){
+        //   yield;
+        // }
+        // cls();
+      //}
+      
+      let cx = 20,cy = 13;
+      let i = 0;
+      let colors = [];
+      let checker = String.fromCharCode(0xef);
+      for(let back = 0;back < 8;++back){
+        for(let front = back;front < 8;++front){
+          colors.push({back:back,front:front});
         }
-        for(let j = 0;j < 64;++j){
-          yield;
-        }
-        cls();
       }
+
+      for(let x = 0,ex = 40;x < ex;++x){
+        for(let y = 0,ey = 25;y < ey;++y){
+          printDirect(x,y,checker,0,0);         
+        }
+      }
+
+      while(true){
+        i = yield * circleLoop(colors,cx,cy,i);
+        i = yield * rectLoop(colors,cx,cy,i);
+      }
+
       updateStatus(STATUS.stop);
     })();  
     main = gen.next.bind(gen);
