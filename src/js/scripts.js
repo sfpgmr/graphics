@@ -587,7 +587,11 @@ window.addEventListener('load',()=>{
       {
         for(let x = 0,ex = 40;x < ex;++x){
           for(let y = 0,ey = 25;y < ey;++y){
-            let dx = Math.abs(x - cx),dy = Math.abs(y - cy);
+            let dt = t * 0.25;
+            
+            let ax = Math.cos(dt) * (x - cx) - Math.sin(dt) * (y - cy) + cx;
+            let ay = Math.sin(dt) * (x - cx) + Math.cos(dt) * (y - cy) + cy;
+            let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
             let c;
             if(dx > dy) {
               c = colors[(Math.sin(dx + t) * 18 + 18) | 0];
@@ -597,14 +601,42 @@ window.addEventListener('load',()=>{
             setColor(x,y,c.back,c.front);         
           }
         }
-        t += 0.2;
+        t += 0.1;
         yield;
       }
       
       return t;  
   }
 
-  
+  function *rectLoop2(colors,cx,cy,t) 
+  {
+      //while (true) {
+      //cls();
+      
+      for(let i = 0;i < 256;++i)
+      {
+        for(let x = 0,ex = 40;x < ex;++x){
+          for(let y = 0,ey = 25;y < ey;++y){
+            let dt = t * 0.25;
+            
+            let ax = Math.cos(dt) * (x - cx) - Math.sin(dt) * (y - cy) + cx;
+            let ay = Math.sin(dt) * (x - cx) + Math.cos(dt) * (y - cy) + cy;
+            let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
+            let c;
+            if(dx > dy ) {
+              c = colors[(Math.sin(Math.cos(dx) + t) * 18 + 18) | 0];
+            } else {
+              c = colors[(Math.sin(Math.cos(dy) + t) * 18 + 18) | 0];
+            }
+            setColor(x,y,c.back,c.front);         
+          }
+        }
+        t += 0.1;
+        yield;
+      }
+      
+      return t;  
+  }  
   // メイン
   function run(){
     var gen = (function * (){
@@ -771,8 +803,9 @@ window.addEventListener('load',()=>{
       }
 
       while(true){
-        i = yield * circleLoop(colors,cx,cy,i);
         i = yield * rectLoop(colors,cx,cy,i);
+        i = yield * rectLoop2(colors,cx,cy,i);
+        //i = yield * circleLoop(colors,cx,cy,i);
       }
 
       updateStatus(STATUS.stop);
