@@ -154,6 +154,58 @@ void main(void){
 // }
 // `;
 
+var colorTable = [
+[0,0],
+[0,1],
+[1,1],
+[0,2],
+[0,3],
+[1,2],
+[1,3],
+[2,2],
+[2,3],
+[3,3],
+[0,4],
+[0,5],
+[1,4],
+[1,5],
+[0,6],
+[2,4],
+[0,7],
+[1,6],
+[2,5],
+[3,4],
+[1,7],
+[3,5],
+[2,6],
+[2,7],
+[3,6],
+[3,7],
+[4,4],
+[4,5],
+[5,5],
+[4,6],
+[4,7],
+[5,6],
+[5,7],
+[6,6],
+[6,7],
+[7,7]
+];
+
+var colorTable1 =[
+[0,0],[0,1],[1,1],
+[0,2],[0,3],[1,3],
+[2,2],[2,3],[3,3],
+[0,4],[0,5],[1,5],
+[0,6],[0,7],[1,7],
+[2,6],[2,7],[3,7],
+[4,4],[4,5],[5,5],
+[4,6],[4,7],[5,7],
+[6,6],[6,7],[7,7]
+];
+
+
 
 window.addEventListener('load',()=>{
   // コンソールの作成
@@ -561,14 +613,14 @@ window.addEventListener('load',()=>{
   {
       //while (true) {
       //cls();
-      
+      let colorDiv = colors.length / 2;
       for(let i = 0;i < 256;++i)
       {
         for(let x = 0,ex = 40;x < ex;++x){
           for(let y = 0,ey = 25;y < ey;++y){
             let dx = Math.abs(x - cx),dy = Math.abs(y - cy);
-            let c = colors[(Math.sin(Math.sqrt(dx*dx + dy*dy) + t) * 18 + 18) | 0];
-            setColor(x,y,c.back,c.front);         
+            let c = colors[(Math.sin(Math.sqrt(dx*dx + dy*dy) + t) * colorDiv + colorDiv) | 0];
+            setColor(x,y,c[0],c[1]);         
           }
         }
         t += 0.2;
@@ -582,7 +634,7 @@ window.addEventListener('load',()=>{
   {
       //while (true) {
       //cls();
-      
+      let colorDiv = colors.length / 2;
       for(let i = 0;i < 256;++i)
       {
         for(let x = 0,ex = 40;x < ex;++x){
@@ -594,11 +646,11 @@ window.addEventListener('load',()=>{
             let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
             let c;
             if(dx > dy) {
-              c = colors[(Math.sin(dx + t) * 18 + 18) | 0];
+              c = colors[(Math.sin(dx + t) * colorDiv + colorDiv) | 0];
             } else {
-              c = colors[(Math.sin(dy + t) * 18 + 18) | 0];
+              c = colors[(Math.sin(dy + t) * colorDiv + colorDiv) | 0];
             }
-            setColor(x,y,c.back,c.front);         
+            setColor(x,y,c[0],c[1]);         
           }
         }
         t += 0.1;
@@ -612,6 +664,7 @@ window.addEventListener('load',()=>{
   {
       //while (true) {
       //cls();
+      let colorDiv = colors.length / 2;
       
       for(let i = 0;i < 256;++i)
       {
@@ -624,11 +677,11 @@ window.addEventListener('load',()=>{
             let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
             let c;
             if(dx > dy ) {
-              c = colors[(Math.sin(Math.cos(dx) + t) * 18 + 18) | 0];
+              c = colors[(Math.sin(Math.cos(dx) + t) * colorDiv + colorDiv) | 0];
             } else {
-              c = colors[(Math.sin(Math.cos(dy) + t) * 18 + 18) | 0];
+              c = colors[(Math.sin(Math.cos(dy) + t) * colorDiv + colorDiv) | 0];
             }
-            setColor(x,y,c.back,c.front);         
+            setColor(x,y,c[0],c[1]);         
           }
         }
         t += 0.1;
@@ -636,6 +689,35 @@ window.addEventListener('load',()=>{
       }
       
       return t;  
+  }
+  
+  function *polygonLoop(colors,cx,cy,a,t)
+  {
+      let colorDiv = colors.length / 2;
+      
+      for(let i = 0;i < 128;++i)
+      {
+        for(let x1 = 0,ex1 = 40;x1 < ex1;++x1){
+          for(let y1 = 0,ey1 = 25;y1 < ey1;++y1){
+            let tx = x1 - cx;
+            let ty = y1 - cy;
+            let cost = Math.cos(t/4),sint = Math.sin(t/4);
+            let dx = cost * tx - sint * ty;
+            let dy = sint * tx + cost * ty;
+            let theta = Math.atan2(dy,dx);
+            let theta1 = (Math.floor(theta / (2 * Math.PI / a)) * (2 * Math.PI / a) + Math.PI / a);
+            let x2 = dx * Math.cos(theta1) + dy * Math.sin(theta1);
+            let c = colors[(Math.sin(x2 + t) * colorDiv + colorDiv) | 0];
+            setColor(x1,y1,c[0],c[1]);         
+          }
+        }
+        print(0,0,('0' + a).slice(-2) +'ｶｸｹｲ',7,0,true);
+        t += 0.1;
+        yield;
+      }
+      
+      return t;  
+    
   }  
   // メイン
   function run(){
@@ -803,10 +885,23 @@ window.addEventListener('load',()=>{
       }
 
       while(true){
-        i = yield * rectLoop(colors,cx,cy,i);
-        i = yield * rectLoop2(colors,cx,cy,i);
-        //i = yield * circleLoop(colors,cx,cy,i);
+        for(let a = 3; a < 11;++a){
+          i = yield * polygonLoop(colorTable1,cx,cy,a,i);
+        }
+        for(let a = 9; a > 3;--a){
+          i = yield * polygonLoop(colorTable1,cx,cy,a,i);
+        }
+        // i = yield * rectLoop(colorTable1,cx,cy,i);
+        // i = yield * rectLoop2(colorTable1,cx,cy,i);
+        // i = yield * circleLoop(colorTable1,cx,cy,i);
       }
+      
+      // for(let i = 0,e = colorTable.length;i<e;++i){
+      //   printDirect(i,0,checker,colorTable[i][0],colorTable[i][1]);
+      // }
+      // for(let i = 0,e = colorTable1.length;i<e;++i){
+      //   printDirect(i,2,checker,colorTable1[i][0],colorTable1[i][1]);
+      // }
 
       updateStatus(STATUS.stop);
     })();  
