@@ -109,24 +109,24 @@ gulp.task('devver',function(){
     
   }
 
-  try {
-    fs.mkdirSync(destdir + '/res');
-  } catch (e){
+//   try {
+//     fs.mkdirSync(destdir + '/res');
+//   } catch (e){
     
-  }
+//   }
   
   gulp.src('./dist/*.html').pipe(gulp.dest(destdir));
   gulp.src('./dist/js/*.js').pipe(gulp.dest(destdir + '/js'));
   gulp.src('./dist/css/*.*').pipe(gulp.dest(destdir + '/css'));
-  gulp.src('./dist/res/*.*').pipe(gulp.dest(destdir + '/res'));
+  //gulp.src('./dist/res/*.*').pipe(gulp.dest(destdir + '/res'));
 
 });
 
 gulp.task('browser-sync', function() {
     browserSync({
         server: {
-             baseDir: "./dist/"
-            ,index  : "index.html"
+             baseDir: "./"
+            ,index  : "./index.html"
         },
         files:['./dist/**/*.*']
     });

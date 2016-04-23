@@ -4,6 +4,10 @@ import {fontData} from "./mz700fon";
 import {charCodes,canaCodes} from "./charCodes";
 import * as audio from "./audio";
 import {seqData} from './seqData';
+import * as loops from './polygonLoop';
+import {CharaGraphics} from './charGraphics'; 
+import {json} from './json';
+import * as movie from './movie';
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -208,6 +212,17 @@ var colorTable1 =[
 
 
 window.addEventListener('load',()=>{
+  let vm = {};
+  // audioの初期化
+  let audio_ = new audio.Audio();
+  let sequencer = new audio.Sequencer(audio_);
+  
+  vm.audio = audio_;
+  vm.sequencer = sequencer;
+
+  let loadMovie = movie.loadMovie();
+
+
   // コンソールの作成
   var view = document.getElementById('view');
   var gl;
@@ -229,6 +244,27 @@ window.addEventListener('load',()=>{
   var charCodeBuffer = new Uint8Array(charCodeBufferWidth * charCodeBufferHeight),
       charAttrBuffer = new Uint8Array(charCodeBufferWidth * charCodeBufferHeight);
   var fontBuffer = new Uint8Array(fontTexWidth * fontTexHeight);
+  
+  vm.cg = new CharaGraphics(vm);
+  
+  vm.bufferB = bufferB;
+  vm.bufferG = bufferG;
+  vm.bufferR = bufferR;
+  vm.palletColors = palletColors;
+  vm.virtualWidth = virtualWidth;
+  vm.virtualHeight = virtualHeight;
+  vm.bufferWidth = bufferWidth;
+  vm.bufferHeight = bufferHeight;
+  vm.bufferXSize = bufferXSize;
+  vm.fontTexWidth = fontTexWidth;
+  vm.fontTexHeight = fontTexHeight;
+  vm.charCodeBufferWidth = charCodeBufferWidth;
+  vm.charCodeBufferHeight = charCodeBufferHeight;
+  vm.consoleWidth = consoleWidth;
+  vm.consoleHeight = consoleHeight;
+  vm.charCodeBuffer = charCodeBuffer;
+  vm.charAttrBuffer = charAttrBuffer;
+  vm.fontBuffer = fontBuffer;
   
   // ビットのMSBとLSBを入れ替えるメソッド
   function rev(x){
@@ -538,7 +574,9 @@ window.addEventListener('load',()=>{
     bufferG[offset] = (bufferG[offset] & m) | g;
     bufferR[offset] = (bufferR[offset] & m) | r;
   }
-
+  
+  vm.pset = pset;
+  
   function preset(x,y){
     var offset = (y * bufferXSize + x / 8) | 0;
     var bit = ~(1 << (x % 8));
@@ -546,6 +584,8 @@ window.addEventListener('load',()=>{
     bufferG[offset] &= bit;
     bufferR[offset] &= bit;
   }
+
+  vm.preset = preset;
 
   function cls(){
     for(var i = 0,e = bufferXSize * bufferHeight;i < e;++i) {
@@ -559,6 +599,7 @@ window.addEventListener('load',()=>{
       charAttrBuffer[i] = 0;
     }
   }
+  vm.cls = cls;
   
   // 文字列の表示
   function addPosition(offset,delta)
@@ -592,6 +633,8 @@ window.addEventListener('load',()=>{
     }
   }
   
+  vm.print = print;
+  
   function printDirect(x,y,str,color,bgcolor,charset = 0){
     let offset = x + y * charCodeBufferWidth;
     for(let i = 0,e = str.length;i < e;++i){
@@ -602,6 +645,8 @@ window.addEventListener('load',()=>{
         offset += 1;
     }
   }
+  
+  vm.printDirect = printDirect;
 
   function setColor(x,y,color,bgcolor)
   {
@@ -609,265 +654,14 @@ window.addEventListener('load',()=>{
     charAttrBuffer[offset] = (color << 4) | bgcolor | (charAttrBuffer[offset] & 0x80);
   }
   
-  function *circleLoop(colors,cx,cy,t) 
-  {
-      //while (true) {
-      //cls();
-      let colorDiv = colors.length / 2;
-      for(let i = 0;i < 256;++i)
-      {
-        for(let x = 0,ex = 40;x < ex;++x){
-          for(let y = 0,ey = 25;y < ey;++y){
-            let dx = Math.abs(x - cx),dy = Math.abs(y - cy);
-            let c = colors[(Math.sin(Math.sqrt(dx*dx + dy*dy) + t) * colorDiv + colorDiv) | 0];
-            setColor(x,y,c[0],c[1]);         
-          }
-        }
-        t += 0.2;
-        yield;
-      }
-      
-      return t;  
-  }
-
-  function *rectLoop(colors,cx,cy,t) 
-  {
-      //while (true) {
-      //cls();
-      let colorDiv = colors.length / 2;
-      for(let i = 0;i < 256;++i)
-      {
-        for(let x = 0,ex = 40;x < ex;++x){
-          for(let y = 0,ey = 25;y < ey;++y){
-            let dt = t * 0.25;
-            
-            let ax = Math.cos(dt) * (x - cx) - Math.sin(dt) * (y - cy) + cx;
-            let ay = Math.sin(dt) * (x - cx) + Math.cos(dt) * (y - cy) + cy;
-            let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
-            let c;
-            if(dx > dy) {
-              c = colors[(Math.sin(dx + t) * colorDiv + colorDiv) | 0];
-            } else {
-              c = colors[(Math.sin(dy + t) * colorDiv + colorDiv) | 0];
-            }
-            setColor(x,y,c[0],c[1]);         
-          }
-        }
-        t += 0.1;
-        yield;
-      }
-      
-      return t;  
-  }
-
-  function *rectLoop2(colors,cx,cy,t) 
-  {
-      //while (true) {
-      //cls();
-      let colorDiv = colors.length / 2;
-      
-      for(let i = 0;i < 256;++i)
-      {
-        for(let x = 0,ex = 40;x < ex;++x){
-          for(let y = 0,ey = 25;y < ey;++y){
-            let dt = t * 0.25;
-            
-            let ax = Math.cos(dt) * (x - cx) - Math.sin(dt) * (y - cy) + cx;
-            let ay = Math.sin(dt) * (x - cx) + Math.cos(dt) * (y - cy) + cy;
-            let dx = Math.abs(ax - cx),dy = Math.abs(ay - cy);
-            let c;
-            if(dx > dy ) {
-              c = colors[(Math.sin(Math.cos(dx) + t) * colorDiv + colorDiv) | 0];
-            } else {
-              c = colors[(Math.sin(Math.cos(dy) + t) * colorDiv + colorDiv) | 0];
-            }
-            setColor(x,y,c[0],c[1]);         
-          }
-        }
-        t += 0.1;
-        yield;
-      }
-      
-      return t;  
-  }
+  vm.setColor = setColor;
   
-  function *polygonLoop(colors,cx,cy,a,t)
-  {
-      let colorDiv = colors.length / 2;
-      
-      for(let i = 0;i < 128;++i)
-      {
-        for(let x1 = 0,ex1 = 40;x1 < ex1;++x1){
-          for(let y1 = 0,ey1 = 25;y1 < ey1;++y1){
-            let tx = x1 - cx;
-            let ty = y1 - cy;
-            let cost = Math.cos(t/4),sint = Math.sin(t/4);
-            let dx = cost * tx - sint * ty;
-            let dy = sint * tx + cost * ty;
-            let theta = Math.atan2(dy,dx);
-            let theta1 = (Math.floor(theta / (2 * Math.PI / a)) * (2 * Math.PI / a) + Math.PI / a);
-            let x2 = dx * Math.cos(theta1) + dy * Math.sin(theta1);
-            let c = colors[(Math.sin(x2 + t) * colorDiv + colorDiv) | 0];
-            setColor(x1,y1,c[0],c[1]);         
-          }
-        }
-        print(0,0,('0' + a).slice(-2) +'ｶｸｹｲ',7,0,true);
-        t += 0.1;
-        yield;
-      }
-      
-      return t;  
-    
-  }  
+  vm.colors = colorTable1;
+
   // メイン
   function run(){
     var gen = (function * (){
       //while (true) {
-        // palletColors.set([0,1,2,3,4,5,6,7]);
-        // for (let y = 0; y < virtualHeight; ++y) {
-        //   for (let x = 0; x < virtualWidth; ++x) {
-        //     if((((y / 8) | 0) & 1) > 0){
-        //       if(x % 16 < 8){
-        //         pset(x, y, y % 8);
-        //       } else {
-        //         pset(x, y, x % 8);
-        //       }
-        //     } else {
-        //       if(x % 16 >= 8){
-        //         pset(x, y, 7 - y % 8);
-        //       } else {
-        //         pset(x, y, 7 - x % 8);
-        //       }
-        //     } 
-        //   }
-        //   yield;
-        // }
-
-        // パレットのスクロール
-        // for(let t = 0;t < 128;++t)
-        // {
-        //   let p = palletColors[0];
-        //   for (let i = 0; i < 7; ++i) {
-        //     palletColors[i] = palletColors[i + 1];
-        //   }
-        //   palletColors[7] = p;
-        //   yield;
-        //   yield;
-        // }
-        
-        // for(let t = 0;t < 640;++t){
-        //   for(let u = 0;u < 128;++u){
-        //     pset(Math.random() * 320,Math.random() * 240,Math.random() * 8);
-        //   }
-        //   yield;
-        // }
-        // //パレットのスクロール
-        // for(let t = 0;t < 128;++t)
-        // {
-        //   for (let i = 0; i < 8; ++i) {
-        //     palletColors[i] = 0;
-        //   }
-
-        //   palletColors[t % 7 + 1] = t % 7 + 1;
-
-        //   for(let i = 0;i < 4;++i){
-        //     yield;
-        //   }
-        // }
-        // {
-        //   for(let color = 0;color < 8;++color){
-        //     let i = 0x0;
-        //     for(let y = 0;y < 16;++y){
-        //       for(let x = 0;x < 16;++x){
-        //         charCodeBuffer[x + y * charCodeBufferWidth] = i % 256;
-        //         charAttrBuffer[x + y * charCodeBufferWidth] = color << 4 | (7 - color);
-        //         charCodeBuffer[x + 16 + y * charCodeBufferWidth] = i % 256;
-        //         charAttrBuffer[x + 16 + y * charCodeBufferWidth] = 0x80 | color << 4 | (7-color);
-        //         ++i;
-        //       }
-        //       yield;
-        //     }
-        //   }
-        // }
-        
-        // yield;
-        // for(let i = 256;i < 512;++i){
-        //   charCodeBuffer[(i / 40 * 64) | 0 + i % 40] = i - 256;
-        //   charAttrBuffer[(i / 40 * 64) | 0 + i % 40] =0x17;
-        // }
-        // yield;
-        // for(let i = 512;i < 768;++i){
-        //   charCodeBuffer[(i / 40 * 64) | 0 + i % 40] = i - 512;
-        //   charAttrBuffer[(i / 40 * 64) | 0 + i % 40] =0xf1;
-        // }
-        // yield;
-        // let mes =  'MZ-700ﾌｫﾝﾄｦﾋｮｳｼﾞﾃﾞﾓ';
-        // let mes1 = '                   ';
-        
-        // for(let i = 0;i < 5;++i){
-        //   print(20 - (mes.length / 2) | 0,10,mes,7,0);
-        //   for(let j = 0;j < 16;++j){
-        //     yield;
-        //   }
-        //   print(20 - (mes1.length / 2) | 0,10,mes1,7,0);
-        //   for(let j = 0;j < 16;++j){
-        //     yield;
-        //   }
-        // }
-        // {
-        //   let i = 0;
-        //   let xs = 0, xe = 40 ,ys = 0,ye = 25;
-        //   let x = 0 , y = 0, c = 0;
-        //   while(true){
-        //     for(x = xs; x < xe; ++x){
-        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-        //       ++i;
-        //       i = i % 512;
-        //       yield;
-        //     }
-        //     ++c;
-        //     --x;
-        //     ++ys;
-        //     if((xs >= xe) || (ys >= ye)) break;
-        //     for(y = ys; y < ye; ++y){
-        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-        //       ++i;
-        //       i = i % 512;
-        //       yield;
-        //     }
-        //     ++c;
-        //     --y;
-        //     --xe;
-        //     if((xs >= xe) || (ys >= ye)) break;
-        //     for(x = xe - 1; x >= xs ; --x){
-        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-        //       ++i;
-        //       i = i % 512;
-        //       yield;
-        //     }
-        //     ++c;
-        //     --ye;
-        //     ++x;
-        //     if((xs >= xe) || (ys >= ye)) break;
-        //     for(y = ye - 1; y >= ys;--y){
-        //       printDirect(x,y,String.fromCharCode(i % 256),c % 8,7 - c % 8,i > 255?1:0);
-        //       ++i;
-        //       i = i % 512;
-        //       yield;
-        //     }
-        //     ++c;
-        //     ++y;
-        //     ++xs;
-        //     if((xs >= xe) || (ys >= ye)) break;
-        //   }
-          
-        // }
-        // for(let j = 0;j < 64;++j){
-        //   yield;
-        // }
-        // cls();
-      //}
-      
       let cx = 20,cy = 13;
       let i = 0;
       let colors = [];
@@ -883,18 +677,18 @@ window.addEventListener('load',()=>{
           printDirect(x,y,checker,0,0);         
         }
       }
-
-      while(true){
-        for(let a = 3; a < 11;++a){
-          i = yield * polygonLoop(colorTable1,cx,cy,a,i);
-        }
-        for(let a = 9; a > 3;--a){
-          i = yield * polygonLoop(colorTable1,cx,cy,a,i);
-        }
+     //while(true){
+        // for(let a = 3; a < 11;++a){
+        //   i = yield * loops.polygonLoop(vm,colorTable1,cx,cy,a,i);
+        // }
+        // for(let a = 9; a > 3;--a){
+        //   i = yield * loops.polygonLoop(vm,colorTable1,cx,cy,a,i);
+        // }
         // i = yield * rectLoop(colorTable1,cx,cy,i);
         // i = yield * rectLoop2(colorTable1,cx,cy,i);
         // i = yield * circleLoop(colorTable1,cx,cy,i);
-      }
+      yield * movie.playMovie(vm,colorTable1);
+      //}
       
       // for(let i = 0,e = colorTable.length;i<e;++i){
       //   printDirect(i,0,checker,colorTable[i][0],colorTable[i][1]);
@@ -904,12 +698,11 @@ window.addEventListener('load',()=>{
       // }
 
       updateStatus(STATUS.stop);
+      sequencer.stop();
     })();  
     main = gen.next.bind(gen);
   }
-  let audio_ = new audio.Audio();
-  let sequencer = new audio.Sequencer(audio_);
-  sequencer.load(seqData);
+  
 
   runBtn.addEventListener('click',()=>{
     updateStatus(STATUS.run);
@@ -948,7 +741,13 @@ window.addEventListener('load',()=>{
   // resetBtn.addEventListener('click',()=>{
   //   updateStatus(STATUS.reset);
   // });
-
-  updateStatus(STATUS.stop);
+  sequencer.load(seqData);
+  Promise.all([audio_.readDrumSample,loadMovie])
+  .then(()=>{
+    cls();
+    updateStatus(STATUS.stop);
+    render();
+  });
+  print(0,0,'ﾘｿｰｽｦﾛｰﾄﾞﾁｭｳ.ｵﾏﾁｸﾀﾞｻｲ..',7,1,true);
   render();
 });

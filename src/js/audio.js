@@ -152,7 +152,8 @@ const drumSamples = [
   { name: 'rimshot', path: 'rimshot_lz.json' },// @20
   { name: 'sd1', path: 'sd1_lz.json' },// @21
   { name: 'sd2', path: 'sd2_lz.json' },// @22
-  { name: 'tamb', path: 'tamb_lz.json' }// @23
+  { name: 'tamb', path: 'tamb_lz.json' },// @23
+  { name:'voice',path: 'movie_lz.json'}// @24
 ];
 
 let xhr = new XMLHttpRequest();
@@ -176,7 +177,7 @@ function readDrumSample(audioctx) {
 
   drumSamples.forEach((d) => {
     pr =
-      pr.then(json.bind(null, './res/' + d.path))
+      pr.then(json.bind(null, '../../dist/res/' + d.path))
         .then(data => {
           let sampleStr = lzbase62.decompress(data.samples);
           let samples = decodeStr(4, sampleStr);
@@ -486,6 +487,10 @@ export class Audio {
     }
     //  this.started = false;
     //}
+  }
+  
+  getWaveSample(no){
+    return waveSamples[no];
   }
 }
 
