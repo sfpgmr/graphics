@@ -7,7 +7,7 @@ import {seqData} from './seqData';
 import * as loops from './polygonLoop';
 import {CharaGraphics} from './charGraphics'; 
 import {json} from './json';
-import * as movie from './movie';
+import {Movie} from './movie';
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -220,8 +220,6 @@ window.addEventListener('load',()=>{
   vm.audio = audio_;
   vm.sequencer = sequencer;
 
-  let loadMovie = movie.loadMovie();
-
 
   // コンソールの作成
   var view = document.getElementById('view');
@@ -265,6 +263,11 @@ window.addEventListener('load',()=>{
   vm.charCodeBuffer = charCodeBuffer;
   vm.charAttrBuffer = charAttrBuffer;
   vm.fontBuffer = fontBuffer;
+  vm.runBtn = runBtn;
+  vm.stopBtn = runBtn;
+  vm.resumeBtn = runBtn;
+  
+  let movie;
   
   // ビットのMSBとLSBを入れ替えるメソッド
   function rev(x){
@@ -687,7 +690,7 @@ window.addEventListener('load',()=>{
         // i = yield * rectLoop(colorTable1,cx,cy,i);
         // i = yield * rectLoop2(colorTable1,cx,cy,i);
         // i = yield * circleLoop(colorTable1,cx,cy,i);
-      yield * movie.playMovie(vm,colorTable1);
+      yield * movie.playMovie(colorTable1);
       //}
       
       // for(let i = 0,e = colorTable.length;i<e;++i){
@@ -714,14 +717,17 @@ window.addEventListener('load',()=>{
     if(status == STATUS.pause){
       updateStatus(STATUS.run);
       sequencer.resume();
+      movie.resume();
     } else {
       sequencer.pause();
+      movie.pause();
       updateStatus(STATUS.pause);
     }
   });
 
   stopBtn.addEventListener('click',()=>{
     sequencer.stop();
+    movie.stop();
     updateStatus(STATUS.stop);
   });
   
@@ -729,11 +735,13 @@ window.addEventListener('load',()=>{
     if(document.hidden){
       if(sequencer.status == sequencer.PLAY){
         sequencer.pause();
+        movie.pause();
         sequencer.isHiddenPause = true;
       }
     } else {
       if(sequencer.isHiddenPause){
         sequencer.resume();
+        movie.resume();
         sequencer.isHiddenPause = false;
       }
     }
@@ -741,12 +749,16 @@ window.addEventListener('load',()=>{
   // resetBtn.addEventListener('click',()=>{
   //   updateStatus(STATUS.reset);
   // });
+
+  movie = new Movie(vm);
+  let loadMovie = movie.loadMovie();
+
   sequencer.load(seqData);
   Promise.all([audio_.readDrumSample,loadMovie])
   .then(()=>{
     cls();
     updateStatus(STATUS.stop);
-    render();
+    //render();
   });
   print(0,0,'ﾘｿｰｽｦﾛｰﾄﾞﾁｭｳ.ｵﾏﾁｸﾀﾞｻｲ..',7,1,true);
   render();
