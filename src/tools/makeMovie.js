@@ -1,4 +1,7 @@
 'use strict';
+
+let faceDetect = require('./faceDetect');
+
 let fs = require('fs');
 let PNG = require('node-png').PNG;
 let lzbase62 = require('lzbase62');
@@ -27,13 +30,14 @@ var readDir = denodeify(fs.readdir);
 var writeFile = denodeify(fs.writeFile);
 let movieArray = [];
 
-readDir('./res/outmov/')
+faceDetect()
+.then(readDir.bind(null,'./res/outmov2/'))
 .then((files)=>{
     return files.filter(function(file){
-        return fs.statSync('./res/outmov/' + file).isFile() && /.*\.png$/ig.test(file); //絞り込み
+        return fs.statSync('./res/outmov2/' + file).isFile() && /.*\.png$/ig.test(file); //絞り込み
     })
     .sort()
-    .map(d=>'./res/outmov/' + d);
+    .map(d=>'./res/outmov2/' + d);
 })
 .then((files)=>{
   let pr = Promise.resolve(0);  
@@ -64,12 +68,12 @@ function createMovieData(path){
             let g = ((this.data[idx + 1] / 28.4444 ) | 0);
             let r = ((this.data[idx] / 28.4444 ) | 0);
             let b = (this.data[idx + 2] / 28.4444 ) | 0;
-            out.push((g < 3 ? g : 2) * 9 + (r < 3 ? r : 2) * 3 + (b < 3 ? b:2));
+            out2.push((g < 3 ? g : 2) * 9 + (r < 3 ? r : 2) * 3 + (b < 3 ? b:2));
             //out.push(g1 * 9 + r1 * 3 + b1);
             //out1.push((g % 3 ) * 9 + (r % 3 ) * 3 + (b % 3));
             //out1.push((g < 3 ? 0 : g1 ) * 9 + (r < 3 ? 0 : r1 ) * 3 + (b < 3  ? 0 : b1 ));
             out1.push(((g < 6 && g > 2)? g - 3 : g > 5 ? 2 : 0) * 9 + ((r < 6 && r > 2)? r - 3 : r > 5 ? 2 : 0) * 3 + ((b < 6 && b > 2) ? b - 3:b > 5 ? 2 : 0));
-            out2.push(((g < 9 && g > 5)? g - 6 : 0) * 9 + ((r < 9 && r > 5)? r - 6 : 0) * 3 + ((b < 9 && b > 5) ? b - 6:0));
+            out.push(((g < 9 && g > 5)? g - 6 : 0) * 9 + ((r < 9 && r > 5)? r - 6 : 0) * 3 + ((b < 9 && b > 5) ? b - 6:0));
             //out2.push((g < 6 ? 0 : g1 ) * 9 + (r < 6 ? 0 : r1 ) * 3 + (b < 6  ? 0 : b1 ));
             //out2.push((g < 6 ? 0 : g1 ) * 9 + (r < 6 ? 0 : r1 ) * 3 + (b < 6  ? 0 : b1 ));
             //out.push((g % 3 | 0) * 9 + (r % 3 | 0) * 3 + (b % 3 | 0));

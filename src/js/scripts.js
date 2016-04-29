@@ -518,8 +518,7 @@ window.addEventListener('load',()=>{
   window.addEventListener('resize',resize);
 
   // レンダリング
-  function render(){
-    requestAnimationFrame(render);
+  function render_(){
 		gl.clearColor(0.0, 0.0, 0.0, 1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -535,7 +534,12 @@ window.addEventListener('load',()=>{
 
     gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
 		gl.flush();
+  }
+
+  function render(){
+    requestAnimationFrame(render);
     if(status == STATUS.run){
+      render_();
       main && main();
     }
   }
@@ -757,9 +761,10 @@ window.addEventListener('load',()=>{
   Promise.all([audio_.readDrumSample,loadMovie])
   .then(()=>{
     cls();
+    render_();
     updateStatus(STATUS.stop);
-    //render();
+    render();
   });
   print(0,0,'ﾘｿｰｽｦﾛｰﾄﾞﾁｭｳ.ｵﾏﾁｸﾀﾞｻｲ..',7,1,true);
-  render();
+  render_();
 });
