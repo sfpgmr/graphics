@@ -84,16 +84,3 @@ function faceDetect() {
 }
 
 module.exports = faceDetect;
-
-// cv.readImage("./res/outmov/00001.png", function(err, im){
-//   im.detectObject(cv.FACE_CASCADE, {}, function(err, faces){
-//     for (var i=0;i<faces.length; i++){
-//       let pos = faces[i];
-//       let cx = pos.x + pos.width / 2,cy = pos.y + pos.height / 2;
-
-//       im.crop(cx - w /2 ,cy - h / 2 + 5 ,w,h).save('./out.png');
-// //      im.ellipse(x.x + x.width/2, x.y + x.height/2, x.width/2, x.height/2);
-//     }
-// //    im.save('./out.png');
-//   });
-// })
