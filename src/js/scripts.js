@@ -8,6 +8,7 @@ import * as loops from './polygonLoop';
 import {CharaGraphics} from './charGraphics'; 
 import {json} from './json';
 import {Movie} from './movie';
+import {initLine} from './lines';
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -665,182 +666,38 @@ window.addEventListener('load',()=>{
   
   vm.colors = colorTable1;
   
-  // キャラクターによる線分描画
-  function cline(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = y2 - y1,dx = x2 - x1;
-    let m = Math.abs(dy/dx);
-    if(m <= 1){
-      m = m * (dy >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dx),d = (dx >= 0 ? 1 : -1);i <= e;++i,x+=d,y+=m){
-        printDirect(x,Math.floor(y),char,color,bgcolor,attr);
-      }
-    } else {
-      m = 1/m;
-      m = m * (dx >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dy),d = (dy >= 0 ? 1 : -1);i <= e;++i,y+=d,x += m){
-        printDirect(Math.floor(x),y,char,color,bgcolor,attr);
-      }
-    }
-  }
-  
-  function cline1(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = y2 - y1,dx = x2 - x1;
-    let m = Math.abs(dy/dx);
-    if(m <= 1){
-      m = m * (dy >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dx),d = (dx >= 0 ? 1 : -1),D = 0;i <= e;++i,x+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= 1.0){
-          D -= 1.0;
-          ++y;
-        }
-      }
-    } else {
-      m = 1/m;
-      m = m * (dx >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dy),d = (dy >= 0 ? 1 : -1),D = 0;i <= e;++i,y+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= 1.0){
-          D -= 1.0;
-          ++x;
-        }
-      }
-    }
-  }
-
-  function cline1(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = y2 - y1,dx = x2 - x1;
-    let m = Math.abs(dy/dx);
-    if(m <= 1){
-      //m = m * (dy >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dx),d = (dx >= 0 ? 1 : -1),D = 0.5;i <= e;++i,x+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= 1.0){
-          D -= 1.0;
-          y += d;
-        }
-      }
-    } else {
-      m = 1/m;
-      //m = m * (dx >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dy),d = (dy >= 0 ? 1 : -1),D = 0.5;i <= e;++i,y+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= 1.0){
-          D -= 1.0;
-          x += d;
-        }
-      }
-    }
-  }
-  
-  
-   function cline2(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = y2 - y1,dx = x2 - x1;
-    let m = Math.abs(dy);
-    if(m <= Math.abs(dx)){
-      //m = m * (dy >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dx),d = (dx >= 0 ? 1 : -1),D = 0.5 * m;i <= e;++i,x+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= Math.abs(dx)){
-          D -= Math.abs(dx);
-          y += d;
-        }
-      }
-    } else {
-      //m = 1/m;
-      m = Math.abs(dx);
-      //m = m * (dx >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dy),d = (dy >= 0 ? 1 : -1),D = 0.5 * m;i <= e;++i,y+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= Math.abs(dy)){
-          D -= Math.abs(dy);
-          x += d;
-        }
-      }
-    }
-  } 
-  
-   function cline3(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = y2 - y1,dx = x2 - x1;
-    let m = (Math.abs(dy) << 1);
-    if(m <= (Math.abs(dx) << 1)){
-      //m = m * (dy >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dx),d = (dx >= 0 ? 1 : -1),D = (m >> 1);i <= e;++i,x+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= (Math.abs(dx) << 1)){
-          D -= (Math.abs(dx) << 1);
-          y += d;
-        }
-      }
-    } else {
-      //m = 1/m;
-      m = (Math.abs(dx) << 1);
-      //m = m * (dx >= 0 ? 1:-1);
-      for(let x = x1,y = y1,i = 0,e = Math.abs(dy),d = (dy >= 0 ? 1 : -1),D = (m >> 1);i <= e;++i,y+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= (Math.abs(dy) << 1)){
-          D -= (Math.abs(dy) << 1);
-          x += d;
-        }
-      }
-    }
-  } 
-  
-  
-   function cline4(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let dy = (y2 - y1) << 1,dx = (x2 - x1) <<1;
-    let ady = Math.abs(dy) | 0,adx = Math.abs(dx) | 0;
-    let m = ady;
-    if(m <= adx){
-      for(let x = x1,y = y1,i = 0,e = adx >> 1,d = (dx >= 0 ? 1 | 0 : -1 | 0),D = (m >> 1);i <= e;++i,x+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= adx){
-          D -= adx;
-          y += d;
-        }
-      }
-    } else {
-      m = adx;
-      for(let x = x1,y = y1,i = 0,e = ady >> 1,d = (dy >= 0 ? 1 | 0 : -1 | 0),D = (m >> 1);i <= e;++i,y+=d){
-        printDirect(x,y,char,color,bgcolor,attr);
-        D = D + m;
-        if(D >= ady){
-          D -= ady;
-          x += d;
-        }
-      }
-    }
-  }   
-
-  function cline0(x1,y1,x2,y2,char = String.fromCharCode(0xef),color = 7,bgcolor = 0,attr = 0){
-    let m = Math.abs((y2 - y1)/(x2 - x1));
-      for(let x = x1,y = y1;x <= x2;++x,y+=m){
-        printDirect(x,Math.floor(y),char,color,bgcolor,attr);
-      }
-  }
+  initLine(vm);
 
   // メイン
   function run(){
     var gen = (function * (){
-      cls();
       while(true){
-        cline4(0,0,10,14);
-        cline4(39,24,0,0);
-        cline4(0,0,24,24);
+        cls();
+        let i = 0;
+        for(let x = 0;x < 320;++x){
+          vm.line(x,0,319 - x,199,i++ % 8);
+          yield;
+        }
+        
+        for(let y = 199;y >= 0;--y){
+          vm.line(0,y,319,199-y,i++ % 8);
+          yield;
+        }
+        
+        for(let x = 0;x < 320;++x){
+          vm.line(x,0,319 - x,199,0);
+          yield;
+        }
+        
+        for(let y = 199;y >= 0;--y){
+          vm.line(0,y,319,199-y,0);
+          yield;
+        }        
+      }
+
         // cline(0,0,10,24);
         // cline(0,24,10,0);
         // cline(10,24,0,0);
-        yield;
-      }
       //while (true) {
       // let cx = 20,cy = 13;
       // let i = 0;
@@ -881,6 +738,8 @@ window.addEventListener('load',()=>{
       sequencer.stop();
     })();  
     main = gen.next.bind(gen);
+    
+   
   }
   
 
