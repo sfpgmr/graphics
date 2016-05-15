@@ -9,6 +9,7 @@ import {CharaGraphics} from './charGraphics';
 import {json} from './json';
 import {Movie} from './movie';
 import {initLine} from './lines';
+import {drawTriangle} from './polygon';
 
 // フレームバッファに書き込むシェーダー
 // var vshaderFSrc = 
@@ -33,7 +34,6 @@ import {initLine} from './lines';
 //  gl_FragColor = vec4(vcolor, 0. , 0. , 1.);
 // }
 // `;
-
 // パレットエミュレートシェーダー
 var vshaderPSrc = 
 `precision mediump float;
@@ -671,29 +671,34 @@ window.addEventListener('load',()=>{
   // メイン
   function run(){
     var gen = (function * (){
-      while(true){
-        cls();
-        let i = 0;
-        for(let x = 0;x < 320;++x){
-          vm.line(x,0,319 - x,199,i++ % 8);
-          yield;
-        }
+      // while(true){
+      //   cls();
+      //   let i = 0;
+      //   for(let x = 0;x < 320;++x){
+      //     vm.line(x,0,319 - x,199,i++ % 8);
+      //     yield;
+      //   }
         
-        for(let y = 199;y >= 0;--y){
-          vm.line(0,y,319,199-y,i++ % 8);
-          yield;
-        }
+      //   for(let y = 199;y >= 0;--y){
+      //     vm.line(0,y,319,199-y,i++ % 8);
+      //     yield;
+      //   }
         
-        for(let x = 0;x < 320;++x){
-          vm.line(x,0,319 - x,199,0);
-          yield;
-        }
+      //   for(let x = 0;x < 320;++x){
+      //     vm.line(x,0,319 - x,199,0);
+      //     yield;
+      //   }
         
-        for(let y = 199;y >= 0;--y){
-          vm.line(0,y,319,199-y,0);
-          yield;
-        }        
-      }
+      //   for(let y = 199;y >= 0;--y){
+      //     vm.line(0,y,319,199-y,0);
+      //     yield;
+      //   }        
+      // }
+
+      // drawTriangle(vm,0,0,0,24,24,24,7);
+      // yield;
+      drawTriangle(vm,0,0,0,24,24,0,7);
+      yield;
 
         // cline(0,0,10,24);
         // cline(0,24,10,0);
