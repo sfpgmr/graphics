@@ -177,7 +177,7 @@ function readDrumSample(audioctx) {
 
   drumSamples.forEach((d) => {
     pr =
-      pr.then(json.bind(null, '../../dist/res/' + d.path))
+      pr.then(json.bind(null, '../dist/res/' + d.path))
         .then(data => {
           let sampleStr = lzbase62.decompress(data.samples);
           let samples = decodeStr(4, sampleStr);
