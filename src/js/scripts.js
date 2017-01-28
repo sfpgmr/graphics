@@ -697,7 +697,7 @@ window.addEventListener('load',()=>{
 
       // drawTriangle(vm,0,0,0,24,24,24,7);
       // yield;
-      drawTriangle(vm,0,0,0,24,24,0,7);
+      drawTriangle(vm,20,0,0,24,24,24,7);
       yield;
 
         // cline(0,0,10,24);
